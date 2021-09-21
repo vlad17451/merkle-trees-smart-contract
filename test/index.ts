@@ -114,23 +114,23 @@ describe('Contract: Broker', () => {
 		it('', async () => {
 			await reDeploy()
 			const hash = computeRootHash()
-			// console.log('Root hash', hash)
+			console.log('Root hash', hash)
 			await ctf.setWhiteListRootHash(hash)
 			// const r = await ctf.whiteListRootHash()
 			// console.log('whiteListRootHash', r)
 			// console.log('getMerkleTree', getMerkleTree())
 			const merkleTree = getMerkleTree() as any
 
-			const currentCandidate = user0
+			const currentCandidate = owner
 
 			const { index, proof } = merkleTree.leaves
 				.find((item: SignerWithAddress) =>
 				item.address.toLowerCase() === currentCandidate.address.toLowerCase())
 
 			// console.log(currentCandidate.address)
-			// console.log(index)
-			// console.log(proof)
-			await ctf.capture(index, currentCandidate.address, proof);
+			console.log(index)
+			console.log(proof)
+			await ctf.capture(index, proof);
 
 			expect(currentCandidate.address).to.be.equal(await ctf.currentFlagHolder())
 		})
