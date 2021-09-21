@@ -121,7 +121,7 @@ describe('Contract: Broker', () => {
 			// console.log('getMerkleTree', getMerkleTree())
 			const merkleTree = getMerkleTree() as any
 
-			const currentCandidate = user0
+			const currentCandidate = user1
 
 			const { index, proof } = merkleTree.leaves
 				.find((item: SignerWithAddress) =>
@@ -130,7 +130,7 @@ describe('Contract: Broker', () => {
 			// console.log(currentCandidate.address)
 			// console.log(index)
 			// console.log(proof)
-			await ctf.capture(index, currentCandidate.address, proof);
+			await ctf.connect(currentCandidate).capture(index, proof);
 
 			expect(currentCandidate.address).to.be.equal(await ctf.currentFlagHolder())
 		})
