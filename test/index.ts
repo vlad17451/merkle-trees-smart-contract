@@ -22,8 +22,8 @@ let user3: SignerWithAddress
 
 let whiteList: string[]
 
-const expandLeaves = (): {address: string, index: number}[] => {
-	let addresses = whiteList;
+const expandLeaves = (addresses: string[]): {address: string, index: number}[] => {
+	// let addresses = whiteList;
 	addresses.sort(function(a, b) {
 		let al = a.toLowerCase(), bl = b.toLowerCase();
 		if (al < bl) { return -1; }
@@ -36,8 +36,8 @@ const expandLeaves = (): {address: string, index: number}[] => {
 	}));
 }
 
-function getLeaves() {
-	let leaves = expandLeaves();
+function getLeaves(addresses: string[]) {
+	let leaves = expandLeaves(addresses);
 	return leaves.map((leaf) =>
 		ethers.utils.solidityKeccak256(["uint256", "address"], [leaf.index, leaf.address]));
 }
@@ -55,8 +55,8 @@ function reduceMerkleBranches(leaves: string[]) {
 	});
 }
 
-const computeMerkleProof = (index: number) => {
-	let leaves = getLeaves();
+const computeMerkleProof = (index: number, addresses: string[]) => {
+	let leaves = getLeaves(addresses);
 	let path = index;
 	let proof = [];
 	while (leaves.length > 1) {
@@ -75,8 +75,8 @@ const computeMerkleProof = (index: number) => {
 	return proof;
 }
 
-function computeRootHash() {
-	let leaves = getLeaves();
+function computeRootHash(addresses: string[]) {
+	let leaves = getLeaves(addresses);
 	while (leaves.length > 1) {
 		reduceMerkleBranches(leaves);
 	}
@@ -89,15 +89,15 @@ interface ITree {
 	leaves: {address: string, index: number, proof: string[]}[]
 }
 
-const getTree = (): ITree => {
-	let leaves = expandLeaves() as {address: string, index: number, proof: string[]}[];
+const getTree = (addresses: string[]): ITree => {
+	let leaves = expandLeaves(addresses) as {address: string, index: number, proof: string[]}[];
 	for(let i = 0; i < leaves.length; i++){
-		leaves[i].proof = computeMerkleProof(i)
+		leaves[i].proof = computeMerkleProof(i, addresses)
 		// leaves[i].str = JSON.stringify(computeMerkleProof(i))
 		// leaves[i].hash = ethers.utils.solidityKeccak256(["uint256", "address"], [leaves[i].index, leaves[i].address]);
 	}
 	return {
-		merkleRoot: computeRootHash(),
+		merkleRoot: computeRootHash(addresses),
 		amount: leaves.length,
 		leaves: leaves
 	};
@@ -128,13 +128,21 @@ describe('Contract: Broker', () => {
 			const filledWhitelist = await ctf.fillWhitelist(whiteList)
 			whiteList = [ ...filledWhitelist ]
 
-			const hash = computeRootHash()
-			// console.log('Root hash', hash)
+			// const sortAddresses = await ctf.sortAddresses(whiteList)
+			// console.log(1, sortAddresses)
+			// console.log(2, expandLeaves(whiteList))
+
+			const leaves = await ctf.getLeaves(whiteList)
+			// console.log(1, leaves)
+			// console.log(2, getLeaves(whiteList))
+
+			// const hash = computeRootHash(whiteList)
+			const hash =  await ctf.computeRootHash(whiteList)
 			await ctf.setWhiteListRootHash(hash)
 			// const r = await ctf.whiteListRootHash()
 			// console.log('whiteListRootHash', r)
 			// console.log('getTree', getTree())
-			const tree = getTree()
+			const tree = getTree(whiteList)
 
 			const currentCandidate = user0
 

@@ -23,6 +23,51 @@ contract CaptureTheFlag is Ownable {
 		}
 		return newAddresses;
 	}
+	
+	function sortAddresses (address [] memory addresses) public pure returns (address [] memory) {
+		for (uint256 i = addresses.length - 1; i > 0; i--) {
+			for (uint256 j = 0; j < i; j++) {
+				if (addresses [i] < addresses [j]) {
+					(addresses [i], addresses [j]) = (addresses [j], addresses [i]);
+				}
+			}
+		}
+		return addresses;
+	}
+	
+	function getLeaves(address[] memory addresses) public view returns(bytes32[] memory) {
+		uint256 length = addresses.length;
+		addresses = sortAddresses(addresses);
+		bytes32[] memory leaves = new bytes32[](length);
+		for (uint256 i; i < length; i++) {
+			leaves[i] = keccak256(abi.encodePacked(i, addresses[i]));
+		}
+		return leaves;
+	}
+	
+	function computeRootHash(address[] memory addresses) public view returns(bytes32) {
+		bytes32[] memory leaves = getLeaves(addresses);
+		uint256 length = leaves.length;
+		uint256 hashCount = (length * 2) - 1;
+		bytes32[] memory hashes = new bytes32[](hashCount);
+		for (uint i = 0; i < leaves.length; i++) {
+			hashes[i] = leaves[i];
+		}
+		uint256 n = length;
+		uint256 offset = 0;
+		uint256 iteration = length;
+		while (n > 0) {
+			for (uint i = 0; i < n - 1; i += 2) {
+				hashes[iteration] = keccak256(
+					abi.encodePacked(hashes[offset + i], hashes[offset + i + 1])
+				);
+				iteration++;
+			}
+			offset += n;
+			n = n / 2;
+		}
+		return hashes[hashes.length - 1];
+	}
 
 	function capture(uint256 index, bytes32[] calldata proof) public payable {
 		bytes32 node = keccak256(abi.encodePacked(index, msg.sender));
