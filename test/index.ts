@@ -35,7 +35,6 @@ describe('Contract: Broker', () => {
 	describe('main', () => {
 		it('Should capture the flag', async () => {
 			await reDeploy()
-			console.log(await ctf.whiteListRootHash())
 			await ctf.addMember(owner.address, [])
 			whiteList.push(owner.address)
 			expect(await ctf.whiteListRootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "address"], [0, owner.address]))
