@@ -99,7 +99,7 @@ contract CaptureTheFlag is Ownable {
 		uint256 layer = filledAddresses.length;
 		uint256 offset = 0;
 		uint256 iteration = 0;
-		while (path > 0) {
+		while (layer > 1) {
 			bytes32 node;
 			if ((path & 0x01) == 1) {
 				node = nodes[offset + path - 1];
