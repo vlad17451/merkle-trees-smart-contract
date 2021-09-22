@@ -128,29 +128,15 @@ describe('Contract: Broker', () => {
 			const filledWhitelist = await ctf.fillWhitelist(whiteList)
 			whiteList = [ ...filledWhitelist ]
 
-			// const sortAddresses = await ctf.sortAddresses(whiteList)
-			// console.log(1, sortAddresses)
-			// console.log(2, expandLeaves(whiteList))
-
-			const leaves = await ctf.getLeaves(whiteList)
-			// console.log(1, leaves)
-			// console.log(2, getLeaves(whiteList))
-
-			// const hash = computeRootHash(whiteList)
-			const hash =  await ctf.computeRootHash(whiteList)
+			const hash =  await ctf.getRootHash(whiteList)
 			await ctf.setWhiteListRootHash(hash)
-			// const r = await ctf.whiteListRootHash()
-			// console.log('whiteListRootHash', r)
-			// console.log('getTree', getTree())
-			const tree = getTree(whiteList)
 
-			const currentCandidate = user0
+			const currentCandidate = owner
 
-			const { index, proof } = getProofByAddress(tree, currentCandidate.address)
+			const proofResponse = await ctf.getProof(owner.address, whiteList)
+			const proof = proofResponse.proof
+			const index = proofResponse.index
 
-			// console.log(currentCandidate.address)
-			// console.log(index)
-			// console.log(proof)
 			await ctf.connect(currentCandidate).capture(index, proof);
 
 			expect(currentCandidate.address).to.be.equal(await ctf.currentFlagHolder())
