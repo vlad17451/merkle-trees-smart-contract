@@ -21,93 +21,7 @@ let user3: SignerWithAddress
 
 
 let whiteList: string[]
-
-const expandLeaves = (addresses: string[]): {address: string, index: number}[] => {
-	// let addresses = whiteList;
-	addresses.sort(function(a, b) {
-		let al = a.toLowerCase(), bl = b.toLowerCase();
-		if (al < bl) { return -1; }
-		if (al > bl) { return 1; }
-		return 0;
-	});
-	return addresses.map((a, i) => ({
-		address: a.toLowerCase(),
-		index: i,
-	}));
-}
-
-function getLeaves(addresses: string[]) {
-	let leaves = expandLeaves(addresses);
-	return leaves.map((leaf) =>
-		ethers.utils.solidityKeccak256(["uint256", "address"], [leaf.index, leaf.address]));
-}
-
-function reduceMerkleBranches(leaves: string[]) {
-	let output = [];
-	while (leaves.length) {
-		let left = leaves.shift();
-		let right = (leaves.length === 0) ? left: leaves.shift();
-		// @ts-ignore
-		output.push(ethers.utils.keccak256(left + right.substring(2)));
-	}
-	output.forEach(function(leaf) {
-		leaves.push(leaf);
-	});
-}
-
-const computeMerkleProof = (index: number, addresses: string[]) => {
-	let leaves = getLeaves(addresses);
-	let path = index;
-	let proof = [];
-	while (leaves.length > 1) {
-		let item
-		if ((path % 2) === 1) {
-			item = leaves[path - 1]
-		} else {
-			item = leaves[path + 1]
-		}
-		if (item) {
-			proof.push(item)
-		}
-		reduceMerkleBranches(leaves);
-		path = Math.floor(path / 2);
-	}
-	return proof;
-}
-
-function computeRootHash(addresses: string[]) {
-	let leaves = getLeaves(addresses);
-	while (leaves.length > 1) {
-		reduceMerkleBranches(leaves);
-	}
-	return leaves[0];
-}
-
-interface ITree {
-	amount: number,
-	merkleRoot: string,
-	leaves: {address: string, index: number, proof: string[]}[]
-}
-
-const getTree = (addresses: string[]): ITree => {
-	let leaves = expandLeaves(addresses) as {address: string, index: number, proof: string[]}[];
-	for(let i = 0; i < leaves.length; i++){
-		leaves[i].proof = computeMerkleProof(i, addresses)
-		// leaves[i].str = JSON.stringify(computeMerkleProof(i))
-		// leaves[i].hash = ethers.utils.solidityKeccak256(["uint256", "address"], [leaves[i].index, leaves[i].address]);
-	}
-	return {
-		merkleRoot: computeRootHash(addresses),
-		amount: leaves.length,
-		leaves: leaves
-	};
-}
-
-const getProofByAddress = (tree: ITree, address: string): { index: number, proof: string[] } => {
-	const { index, proof } = tree.leaves!.find((item: { address: string }) =>
-		(item.address.toLowerCase() === address.toLowerCase())) as {address: string, index: number, proof: string[]}
-	return { index, proof }
-}
+let allAddresses: string[]
 
 async function reDeploy() {
 	const signers = await ethers.getSigners() as SignerWithAddress[]
@@ -116,24 +30,26 @@ async function reDeploy() {
 	let CaptureTheFlag = await ethers.getContractFactory('CaptureTheFlag')
 	ctf = await CaptureTheFlag.deploy() as CaptureTheFlag
 	whiteList = [
+		...signers.slice(0, 12).map((signer) => signer.address),
+	]
+	allAddresses = [
 		...signers.map((signer) => signer.address),
 	]
-	// console.log(whiteList)
 }
 
 describe('Contract: Broker', () => {
 	describe('', () => {
 		it('', async () => {
 			await reDeploy()
-			const filledWhitelist = await ctf.fillWhitelist(whiteList)
-			whiteList = [ ...filledWhitelist ]
 
 			const hash =  await ctf.getRootHash(whiteList)
+
 			await ctf.setWhiteListRootHash(hash)
 
 			const currentCandidate = owner
 
 			const proofResponse = await ctf.getProof(owner.address, whiteList)
+
 			const proof = proofResponse.proof
 			const index = proofResponse.index
 

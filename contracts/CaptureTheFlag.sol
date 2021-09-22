@@ -11,7 +11,7 @@ contract CaptureTheFlag is Ownable {
 		whiteListRootHash = hash;
 	}
 	
-	function fillWhitelist(address[] memory addresses) public view returns(address[] memory) {
+	function fillAddresses(address[] memory addresses) public view returns(address[] memory) {
 		uint256 length = addresses.length;
 		uint256 newLength = length;
 		while (newLength & (newLength - 1) != 0) {
@@ -70,7 +70,7 @@ contract CaptureTheFlag is Ownable {
 	}
 	
 	function getRootHash(address[] memory addresses) public view returns(bytes32) {
-		bytes32[] memory nodes = getNodes(addresses);
+		bytes32[] memory nodes = getNodes(fillAddresses(addresses));
 		return nodes[nodes.length - 1];
 	}
 	
@@ -84,18 +84,19 @@ contract CaptureTheFlag is Ownable {
 	}
 	
 	function getProof(address candidate, address[] memory addresses) public view returns(bytes32[] memory proof, uint256 index) {
-		proof = new bytes32[](sqrt(addresses.length));
-		bytes32[] memory nodes = getNodes(addresses);
-		bytes32[] memory leaves = getLeaves(addresses);
-		addresses = sortAddresses(addresses);
-		for (uint256 i; i < addresses.length; i++) {
-			if (addresses[i] == candidate) {
+		address[] memory filledAddresses = fillAddresses(addresses);
+		proof = new bytes32[](sqrt(filledAddresses.length));
+		bytes32[] memory nodes = getNodes(filledAddresses);
+		bytes32[] memory leaves = getLeaves(filledAddresses);
+		filledAddresses = sortAddresses(filledAddresses);
+		for (uint256 i; i < filledAddresses.length; i++) {
+			if (filledAddresses[i] == candidate) {
 				index = i;
 				break;
 			}
 		}
 		uint256 path = index;
-		uint256 layer = addresses.length;
+		uint256 layer = filledAddresses.length;
 		uint256 offset = 0;
 		uint256 iteration = 0;
 		while (path > 0) {
