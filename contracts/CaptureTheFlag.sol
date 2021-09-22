@@ -1,4 +1,5 @@
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
 contract CaptureTheFlag is Ownable {
 
@@ -8,6 +9,19 @@ contract CaptureTheFlag is Ownable {
 
 	function setWhiteListRootHash(bytes32 hash) public payable onlyOwner {
 		whiteListRootHash = hash;
+	}
+	
+	function fillWhitelist(address[] memory addresses) public view returns(address[] memory) {
+		uint256 length = addresses.length;
+		uint256 newLength = length;
+		while (newLength & (newLength - 1) != 0) {
+			newLength++;
+		}
+		address[] memory newAddresses = new address[](newLength);
+		for (uint i; i < length; i++) {
+			newAddresses[i] = addresses[i];
+		}
+		return newAddresses;
 	}
 
 	function capture(uint256 index, bytes32[] calldata proof) public payable {

@@ -90,7 +90,7 @@ interface ITree {
 }
 
 const getTree = (): ITree => {
-	let leaves = expandLeaves() as any;
+	let leaves = expandLeaves() as {address: string, index: number, proof: string[]}[];
 	for(let i = 0; i < leaves.length; i++){
 		leaves[i].proof = computeMerkleProof(i)
 		// leaves[i].str = JSON.stringify(computeMerkleProof(i))
@@ -110,8 +110,8 @@ const getProofByAddress = (tree: ITree, address: string): { index: number, proof
 }
 
 async function reDeploy() {
-	// const signers = await ethers.getSigners() as SignerWithAddress[]
-	const signers = (await ethers.getSigners()).slice(0, 15) as SignerWithAddress[]
+	const signers = await ethers.getSigners() as SignerWithAddress[]
+	// const signers = (await ethers.getSigners()).slice(0, 15) as SignerWithAddress[]
 	[owner, user0, user1, user2, user3] = signers
 	let CaptureTheFlag = await ethers.getContractFactory('CaptureTheFlag')
 	ctf = await CaptureTheFlag.deploy() as CaptureTheFlag
@@ -125,22 +125,25 @@ describe('Contract: Broker', () => {
 	describe('', () => {
 		it('', async () => {
 			await reDeploy()
+			const filledWhitelist = await ctf.fillWhitelist(whiteList)
+			whiteList = [ ...filledWhitelist ]
+
 			const hash = computeRootHash()
-			console.log('Root hash', hash)
+			// console.log('Root hash', hash)
 			await ctf.setWhiteListRootHash(hash)
 			// const r = await ctf.whiteListRootHash()
 			// console.log('whiteListRootHash', r)
 			// console.log('getTree', getTree())
 			const tree = getTree()
 
-			const currentCandidate = owner
+			const currentCandidate = user0
 
 			const { index, proof } = getProofByAddress(tree, currentCandidate.address)
 
 			// console.log(currentCandidate.address)
-			console.log(index)
-			console.log(proof)
-			await ctf.capture(index, proof);
+			// console.log(index)
+			// console.log(proof)
+			await ctf.connect(currentCandidate).capture(index, proof);
 
 			expect(currentCandidate.address).to.be.equal(await ctf.currentFlagHolder())
 		})
