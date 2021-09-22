@@ -9,12 +9,12 @@ contract CaptureTheFlag is Ownable {
 
 	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
 	
-	function addMember(address newMember, address[] memory currentAddresses) public payable onlyOwner {
-		bytes32 oldHash = getRootHash(currentAddresses);
+	function addMember(address newMember, address[] memory oldAddresses) public payable onlyOwner {
+		bytes32 oldHash = getRootHash(oldAddresses);
 		require(oldHash == whiteListRootHash, 'CaptureTheFlag: Roots do not match');
-		address[] memory newAddresses = new address[](currentAddresses.length + 1);
-		for (uint256 i; i < currentAddresses.length; i++) {
-			newAddresses[i] = currentAddresses[i];
+		address[] memory newAddresses = new address[](oldAddresses.length + 1);
+		for (uint256 i; i < oldAddresses.length; i++) {
+			newAddresses[i] = oldAddresses[i];
 		}
 		newAddresses[newAddresses.length - 1] = newMember;
 		bytes32 newHash = getRootHash(newAddresses);
