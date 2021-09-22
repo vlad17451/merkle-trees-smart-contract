@@ -3,9 +3,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CaptureTheFlag is Ownable {
 
 	bytes32 public whiteListRootHash;
-	
+
 	address public currentFlagHolder;
-	
+
 	function setWhiteListRootHash(bytes32 hash) public payable onlyOwner {
 		whiteListRootHash = hash;
 	}
