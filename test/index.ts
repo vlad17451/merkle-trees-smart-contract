@@ -35,7 +35,9 @@ describe('Contract: Broker', () => {
 	describe('main', () => {
 		it('Should capture the flag', async () => {
 			await reDeploy()
-			await ctf.addMember(owner.address, [])
+			const tx = await ctf.addMember(owner.address, [])
+			let receipt = await tx.wait() as any;
+			expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 			whiteList.push(owner.address)
 			expect(await ctf.whiteListRootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "address"], [0, owner.address]))
 			const proofResponse = await ctf.getProof(owner.address, [ owner.address ])
@@ -46,13 +48,15 @@ describe('Contract: Broker', () => {
 		})
 		it('Should add new member and capture the flag', async () => {
 			const newCandidate = user0
-
-			await ctf.addMember(newCandidate.address, whiteList)
+			const tx = await ctf.addMember(newCandidate.address, whiteList)
+			let receipt = await tx.wait() as any;
+			expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
 			whiteList.push(newCandidate.address)
 			const proofResponse = await ctf.getProof(newCandidate.address, whiteList)
 			const proof = proofResponse.proof
 			const index = proofResponse.index
 			await ctf.connect(newCandidate).capture(index, proof);
 		})
+
 	})
 })
