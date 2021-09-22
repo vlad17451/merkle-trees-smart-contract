@@ -7,8 +7,24 @@ contract CaptureTheFlag is Ownable {
 
 	address public currentFlagHolder;
 
+	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
+	
 	function setWhiteListRootHash(bytes32 hash) public payable onlyOwner {
 		whiteListRootHash = hash;
+	}
+	
+	function addMember(address newMember, address[] memory currentAddresses) public payable onlyOwner {
+		bytes32 oldHash = getRootHash(currentAddresses);
+		require(oldHash == whiteListRootHash, 'CaptureTheFlag: Roots do not match');
+		address[] memory newAddresses = new address[](currentAddresses.length + 1);
+		for (uint256 i; i < currentAddresses.length; i++) {
+			newAddresses[i] = currentAddresses[i];
+		}
+		newAddresses[newAddresses.length - 1] = newMember;
+		bytes32 newHash = getRootHash(newAddresses);
+//		setWhiteListRootHash(newHash);
+		whiteListRootHash = newHash;
+		emit AddNewMember(newMember, oldHash, newHash);
 	}
 	
 	function fillAddresses(address[] memory addresses) public view returns(address[] memory) {
@@ -70,6 +86,9 @@ contract CaptureTheFlag is Ownable {
 	}
 	
 	function getRootHash(address[] memory addresses) public view returns(bytes32) {
+		if (addresses.length == 0) {
+			return bytes32(0);
+		}
 		bytes32[] memory nodes = getNodes(fillAddresses(addresses));
 		return nodes[nodes.length - 1];
 	}
@@ -117,13 +136,15 @@ contract CaptureTheFlag is Ownable {
 	function capture(uint256 index, bytes32[] calldata proof) public payable {
 		bytes32 node = keccak256(abi.encodePacked(index, msg.sender));
 		uint256 path = index;
-		for (uint16 i = 0; i < proof.length; i++) {
-			if ((path & 0x01) == 1) {
-				node = keccak256(abi.encodePacked(proof[i], node));
-			} else {
-				node = keccak256(abi.encodePacked(node, proof[i]));
+		if (proof[0] != 0) {
+				for (uint16 i = 0; i < proof.length; i++) {
+				if ((path & 0x01) == 1) {
+					node = keccak256(abi.encodePacked(proof[i], node));
+				} else {
+					node = keccak256(abi.encodePacked(node, proof[i]));
+				}
+				path /= 2;
 			}
-			path /= 2;
 		}
 		require(node == whiteListRootHash, 'CaptureTheFlag: Invalid proof');
 		currentFlagHolder = msg.sender;
