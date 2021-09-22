@@ -9,10 +9,6 @@ contract CaptureTheFlag is Ownable {
 
 	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
 	
-	function setWhiteListRootHash(bytes32 hash) public payable onlyOwner {
-		whiteListRootHash = hash;
-	}
-	
 	function addMember(address newMember, address[] memory currentAddresses) public payable onlyOwner {
 		bytes32 oldHash = getRootHash(currentAddresses);
 		require(oldHash == whiteListRootHash, 'CaptureTheFlag: Roots do not match');
@@ -22,12 +18,11 @@ contract CaptureTheFlag is Ownable {
 		}
 		newAddresses[newAddresses.length - 1] = newMember;
 		bytes32 newHash = getRootHash(newAddresses);
-//		setWhiteListRootHash(newHash);
 		whiteListRootHash = newHash;
 		emit AddNewMember(newMember, oldHash, newHash);
 	}
 	
-	function fillAddresses(address[] memory addresses) public view returns(address[] memory) {
+	function fillAddresses(address[] memory addresses) internal view returns(address[] memory) {
 		uint256 length = addresses.length;
 		uint256 newLength = length;
 		while (newLength & (newLength - 1) != 0) {
@@ -40,7 +35,7 @@ contract CaptureTheFlag is Ownable {
 		return newAddresses;
 	}
 	
-	function sortAddresses (address [] memory addresses) public pure returns (address[] memory) {
+	function sortAddresses(address [] memory addresses) internal pure returns (address[] memory) {
 		for (uint256 i = addresses.length - 1; i > 0; i--) {
 			for (uint256 j = 0; j < i; j++) {
 				if (addresses [i] < addresses [j]) {
@@ -51,7 +46,7 @@ contract CaptureTheFlag is Ownable {
 		return addresses;
 	}
 	
-	function getLeaves(address[] memory addresses) public view returns(bytes32[] memory) {
+	function getLeaves(address[] memory addresses) internal view returns(bytes32[] memory) {
 		uint256 length = addresses.length;
 		addresses = sortAddresses(addresses);
 		bytes32[] memory leaves = new bytes32[](length);
@@ -61,7 +56,7 @@ contract CaptureTheFlag is Ownable {
 		return leaves;
 	}
 	
-	function getNodes(address[] memory addresses) public view returns(bytes32[] memory) {
+	function getNodes(address[] memory addresses) internal view returns(bytes32[] memory) {
 		bytes32[] memory leaves = getLeaves(addresses);
 		uint256 length = leaves.length;
 		uint256 nodeCount = (length * 2) - 1;
@@ -85,7 +80,7 @@ contract CaptureTheFlag is Ownable {
 		return nodes;
 	}
 	
-	function getRootHash(address[] memory addresses) public view returns(bytes32) {
+	function getRootHash(address[] memory addresses) internal view returns(bytes32) {
 		if (addresses.length == 0) {
 			return bytes32(0);
 		}
