@@ -22,7 +22,7 @@ let user3: SignerWithAddress
 
 let whiteList: string[]
 
-const expandLeaves = () => {
+const expandLeaves = (): {address: string, index: number}[] => {
 	let addresses = whiteList;
 	addresses.sort(function(a, b) {
 		let al = a.toLowerCase(), bl = b.toLowerCase();
@@ -57,7 +57,6 @@ function reduceMerkleBranches(leaves: string[]) {
 
 const computeMerkleProof = (index: number) => {
 	let leaves = getLeaves();
-	if (index == null) { throw new Error('address not found'); }
 	let path = index;
 	let proof = [];
 	while (leaves.length > 1) {
@@ -84,11 +83,17 @@ function computeRootHash() {
 	return leaves[0];
 }
 
-const getMerkleTree = () => {
+interface ITree {
+	amount: number,
+	merkleRoot: string,
+	leaves: {address: string, index: number, proof: string[]}[]
+}
+
+const getTree = (): ITree => {
 	let leaves = expandLeaves() as any;
 	for(let i = 0; i < leaves.length; i++){
 		leaves[i].proof = computeMerkleProof(i)
-		leaves[i].str = JSON.stringify(computeMerkleProof(i))
+		// leaves[i].str = JSON.stringify(computeMerkleProof(i))
 		// leaves[i].hash = ethers.utils.solidityKeccak256(["uint256", "address"], [leaves[i].index, leaves[i].address]);
 	}
 	return {
@@ -96,6 +101,12 @@ const getMerkleTree = () => {
 		amount: leaves.length,
 		leaves: leaves
 	};
+}
+
+const getProofByAddress = (tree: ITree, address: string): { index: number, proof: string[] } => {
+	const { index, proof } = tree.leaves!.find((item: { address: string }) =>
+		(item.address.toLowerCase() === address.toLowerCase())) as {address: string, index: number, proof: string[]}
+	return { index, proof }
 }
 
 async function reDeploy() {
@@ -107,6 +118,7 @@ async function reDeploy() {
 	whiteList = [
 		...signers.map((signer) => signer.address),
 	]
+	// console.log(whiteList)
 }
 
 describe('Contract: Broker', () => {
@@ -118,14 +130,12 @@ describe('Contract: Broker', () => {
 			await ctf.setWhiteListRootHash(hash)
 			// const r = await ctf.whiteListRootHash()
 			// console.log('whiteListRootHash', r)
-			// console.log('getMerkleTree', getMerkleTree())
-			const merkleTree = getMerkleTree() as any
+			// console.log('getTree', getTree())
+			const tree = getTree()
 
 			const currentCandidate = owner
 
-			const { index, proof } = merkleTree.leaves
-				.find((item: SignerWithAddress) =>
-				item.address.toLowerCase() === currentCandidate.address.toLowerCase())
+			const { index, proof } = getProofByAddress(tree, currentCandidate.address)
 
 			// console.log(currentCandidate.address)
 			console.log(index)
