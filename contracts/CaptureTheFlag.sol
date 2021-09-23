@@ -51,10 +51,10 @@ contract CaptureTheFlag is Ownable {
 	
 	function getLeaves(address[] memory addresses) internal pure returns(bytes32[] memory) {
 		uint256 length = addresses.length;
-		addresses = sortAddresses(addresses);
+		addresses = sortAddresses(addresses); // sorting
 		bytes32[] memory leaves = new bytes32[](length);
 		for (uint256 i; i < length; i++) {
-			leaves[i] = keccak256(abi.encodePacked(i, addresses[i]));
+			leaves[i] = keccak256(abi.encodePacked(i, addresses[i])); // get hash from original data
 		}
 		return leaves;
 	}
@@ -62,23 +62,24 @@ contract CaptureTheFlag is Ownable {
 	function getNodes(address[] memory addresses) internal pure returns(bytes32[] memory) {
 		bytes32[] memory leaves = getLeaves(addresses);
 		uint256 length = leaves.length;
-		uint256 nodeCount = (length * 2) - 1;
+		uint256 nodeCount = (length * 2) - 1; // length of all nodes
 		bytes32[] memory nodes = new bytes32[](nodeCount);
 		for (uint256 i = 0; i < leaves.length; i++) {
-			nodes[i] = leaves[i];
+			nodes[i] = leaves[i]; // put first layer of hashes to nodes
 		}
-		uint256 path = length;
-		uint256 offset = 0;
+		uint256 path = length; // path equal to current layer length
+		uint256 offset = 0; // needs to skip passed layer
 		uint256 iteration = length;
 		while (path > 0) {
 			for (uint256 i = 0; i < path - 1; i += 2) {
 				nodes[iteration] = keccak256(
 					abi.encodePacked(nodes[offset + i], nodes[offset + i + 1])
+					// get hashes on next layers, until root, last item of nodes is rootHash
 				);
 				iteration++;
 			}
 			offset += path;
-			path /= 2;
+			path /= 2; // get next layer length
 		}
 		return nodes;
 	}
@@ -100,42 +101,47 @@ contract CaptureTheFlag is Ownable {
 		}
 	}
 	
-	function getProof(address candidate, address[] memory addresses) public pure returns(bytes32[] memory proof, uint256 index) {
+	function getProof(
+		address candidate,
+		address[] memory addresses
+	) public pure returns(bytes32[] memory proof, uint256 index) {
 		address[] memory filledAddresses = fillAddresses(addresses);
-		proof = new bytes32[](sqrt(filledAddresses.length));
+		uint256 length = filledAddresses.length;
+		proof = new bytes32[](sqrt(length));
 		bytes32[] memory nodes = getNodes(filledAddresses);
 		filledAddresses = sortAddresses(filledAddresses);
-		for (uint256 i; i < filledAddresses.length; i++) {
+		for (uint256 i; i < length; i++) {
 			if (filledAddresses[i] == candidate) {
 				index = i;
 				break;
 			}
 		}
-		uint256 path = index;
-		uint256 layer = filledAddresses.length;
-		uint256 offset = 0;
+		uint256 pathItem = index; // pathItem needs to know is item odd
+		uint256 pathLayer = length; // current layer length
+		uint256 offset = 0; // needs to skip passed layer
 		uint256 iteration = 0;
-		while (layer > 1) {
+		while (pathLayer > 1) {
 			bytes32 node;
-			if ((path & 0x01) == 1) {
-				node = nodes[offset + path - 1];
+			if ((pathItem & 0x01) == 1) { // if odd
+				node = nodes[offset + pathItem - 1];
 			} else {
-				node = nodes[offset + path + 1];
+				node = nodes[offset + pathItem + 1];
 			}
 			proof[iteration] = node;
 			iteration++;
-			offset += layer;
-			layer /= 2;
-			path /= 2;
+			offset += pathLayer;
+			pathLayer /= 2;
+			pathItem /= 2;
 		}
 	}
-
-	function capture(uint256 index, bytes32[] calldata proof) public payable {
-		bytes32 node = keccak256(abi.encodePacked(index, msg.sender));
-		uint256 path = index;
+	
+	function verify(address candidate, uint256 index, bytes32[] calldata proof) public view returns(bool) {
+		bytes32 node = keccak256(abi.encodePacked(index, candidate)); // get leave of current pretender value
+		uint256 path = index; // path needs to know is item odd
 		if (proof[0] != 0) {
-				for (uint16 i = 0; i < proof.length; i++) {
-				if ((path & 0x01) == 1) {
+			for (uint16 i = 0; i < proof.length; i++) {
+				// get next nodes from previous nodes until arrived root
+				if ((path & 0x01) == 1) { // if odd
 					node = keccak256(abi.encodePacked(proof[i], node));
 				} else {
 					node = keccak256(abi.encodePacked(node, proof[i]));
@@ -143,7 +149,11 @@ contract CaptureTheFlag is Ownable {
 				path /= 2;
 			}
 		}
-		require(node == whiteListRootHash, 'CaptureTheFlag: Invalid proof');
+		return node == whiteListRootHash;
+	}
+
+	function capture(uint256 index, bytes32[] calldata proof) public payable {
+		require(verify(msg.sender, index, proof), 'CaptureTheFlag: Invalid proof');
 		currentFlagHolder = msg.sender;
 	}
 }
