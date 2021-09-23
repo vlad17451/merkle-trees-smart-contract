@@ -22,7 +22,6 @@ let signers: SignerWithAddress[]
 
 
 let whiteList: string[] = []
-let allAddresses: string[]
 
 async function reDeploy() {
 	signers = await ethers.getSigners() as SignerWithAddress[]

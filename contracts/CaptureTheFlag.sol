@@ -1,3 +1,5 @@
+pragma solidity ^0.8.4;
+
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
@@ -22,7 +24,7 @@ contract CaptureTheFlag is Ownable {
 		emit AddNewMember(newMember, oldHash, newHash);
 	}
 	
-	function fillAddresses(address[] memory addresses) internal view returns(address[] memory) {
+	function fillAddresses(address[] memory addresses) internal pure returns(address[] memory) {
 		uint256 length = addresses.length;
 		uint256 newLength = length;
 		while (newLength & (newLength - 1) != 0) {
@@ -46,7 +48,7 @@ contract CaptureTheFlag is Ownable {
 		return addresses;
 	}
 	
-	function getLeaves(address[] memory addresses) internal view returns(bytes32[] memory) {
+	function getLeaves(address[] memory addresses) internal pure returns(bytes32[] memory) {
 		uint256 length = addresses.length;
 		addresses = sortAddresses(addresses);
 		bytes32[] memory leaves = new bytes32[](length);
@@ -56,7 +58,7 @@ contract CaptureTheFlag is Ownable {
 		return leaves;
 	}
 	
-	function getNodes(address[] memory addresses) internal view returns(bytes32[] memory) {
+	function getNodes(address[] memory addresses) internal pure returns(bytes32[] memory) {
 		bytes32[] memory leaves = getLeaves(addresses);
 		uint256 length = leaves.length;
 		uint256 nodeCount = (length * 2) - 1;
@@ -80,7 +82,7 @@ contract CaptureTheFlag is Ownable {
 		return nodes;
 	}
 	
-	function getRootHash(address[] memory addresses) internal view returns(bytes32) {
+	function getRootHash(address[] memory addresses) internal pure returns(bytes32) {
 		if (addresses.length == 0) {
 			return bytes32(0);
 		}
@@ -97,11 +99,10 @@ contract CaptureTheFlag is Ownable {
 		}
 	}
 	
-	function getProof(address candidate, address[] memory addresses) public view returns(bytes32[] memory proof, uint256 index) {
+	function getProof(address candidate, address[] memory addresses) public pure returns(bytes32[] memory proof, uint256 index) {
 		address[] memory filledAddresses = fillAddresses(addresses);
 		proof = new bytes32[](sqrt(filledAddresses.length));
 		bytes32[] memory nodes = getNodes(filledAddresses);
-		bytes32[] memory leaves = getLeaves(filledAddresses);
 		filledAddresses = sortAddresses(filledAddresses);
 		for (uint256 i; i < filledAddresses.length; i++) {
 			if (filledAddresses[i] == candidate) {
