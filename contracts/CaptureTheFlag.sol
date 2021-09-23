@@ -135,8 +135,13 @@ contract CaptureTheFlag is Ownable {
 		}
 	}
 	
-	function verify(address candidate, uint256 index, bytes32[] calldata proof) public view returns(bool) {
-		bytes32 node = keccak256(abi.encodePacked(index, candidate)); // get leave of current pretender value
+	function verify(
+		address candidate,
+		uint256 index,
+		bytes32[] calldata proof
+	) public view returns(bool) {
+		// get leave of current pretender value
+		bytes32 node = keccak256(abi.encodePacked(index, candidate));
 		uint256 path = index; // path needs to know is item odd
 		if (proof[0] != 0) {
 			for (uint16 i = 0; i < proof.length; i++) {
