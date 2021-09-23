@@ -54,7 +54,7 @@ contract CaptureTheFlag is Ownable {
 		addresses = sortAddresses(addresses); // sorting
 		bytes32[] memory leaves = new bytes32[](length);
 		for (uint256 i; i < length; i++) {
-			leaves[i] = keccak256(abi.encodePacked(i, addresses[i])); // get hash from original data
+			leaves[i] = keccak256(abi.encodePacked(addresses[i])); // get hash from original data
 		}
 		return leaves;
 	}
@@ -141,7 +141,7 @@ contract CaptureTheFlag is Ownable {
 		bytes32[] calldata proof
 	) public view returns(bool) {
 		// get leave of current pretender value
-		bytes32 node = keccak256(abi.encodePacked(index, candidate));
+		bytes32 node = keccak256(abi.encodePacked(candidate));
 		uint256 path = index; // path needs to know is item odd
 		if (proof[0] != 0) {
 			for (uint16 i = 0; i < proof.length; i++) {

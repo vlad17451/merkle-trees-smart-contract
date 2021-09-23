@@ -38,7 +38,7 @@ describe('Contract: Broker', () => {
 			let receipt = await tx.wait() as any;
 			expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 			whiteList.push(owner.address)
-			expect(await ctf.whiteListRootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "address"], [0, owner.address]))
+			expect(await ctf.whiteListRootHash()).to.be.equal(ethers.utils.solidityKeccak256(["address"], [owner.address]))
 			const proofResponse = await ctf.getProof(owner.address, [ owner.address ])
 			const proof = proofResponse.proof
 			const index = proofResponse.index
