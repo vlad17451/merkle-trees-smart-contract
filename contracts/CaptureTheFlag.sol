@@ -38,15 +38,29 @@ contract CaptureTheFlag is Ownable {
 		return newAddresses;
 	}
 	
-	function sortAddresses(address [] memory addresses) internal pure returns (address[] memory) {
-		for (uint256 i = addresses.length - 1; i > 0; i--) {
-			for (uint256 j = 0; j < i; j++) {
-				if (addresses [i] < addresses [j]) {
-					(addresses [i], addresses [j]) = (addresses [j], addresses [i]);
-				}
+	function sortAddresses(address[] memory addresses) public pure returns (address[] memory) {
+		quickSort(addresses, int(0), int(addresses.length - 1));
+		return addresses;
+	}
+	
+	function quickSort(address[] memory addresses, int left, int right) public pure {
+		int i = left;
+		int j = right;
+		if(i==j) return;
+		address pivot = addresses[uint(left + (right - left) / 2)];
+		while (i <= j) {
+			while (addresses[uint(i)] < pivot) i++;
+			while (pivot < addresses[uint(j)]) j--;
+			if (i <= j) {
+				(addresses[uint(i)],addresses[uint(j)]) = (addresses[uint(j)], addresses[uint(i)]);
+				i++;
+				j--;
 			}
 		}
-		return addresses;
+		if (left < j)
+			quickSort(addresses, left, j);
+		if (i < right)
+			quickSort(addresses, i, right);
 	}
 	
 	function getLeaves(address[] memory addresses) internal pure returns(bytes32[] memory) {

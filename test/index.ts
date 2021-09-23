@@ -56,6 +56,5 @@ describe('Contract: Broker', () => {
 			const index = proofResponse.index
 			await ctf.connect(newCandidate).capture(index, proof);
 		})
-
 	})
 })
