@@ -38,10 +38,11 @@ contract CaptureTheFlag is Ownable {
 		return newAddresses;
 	}
 	
-	function sortAddresses(address[] memory addresses) public pure returns (address[] memory) {
-		quickSort(addresses, int(0), int(addresses.length - 1));
-		return addresses;
-	}
+//  sort is not important
+//	function sortAddresses(address[] memory addresses) public pure returns (address[] memory) {
+//		quickSort(addresses, int(0), int(addresses.length - 1));
+//		return addresses;
+//	}
 	
 	function quickSort(address[] memory addresses, int left, int right) public pure {
 		int i = left;
@@ -65,7 +66,7 @@ contract CaptureTheFlag is Ownable {
 	
 	function getLeaves(address[] memory addresses) internal pure returns(bytes32[] memory) {
 		uint256 length = addresses.length;
-		addresses = sortAddresses(addresses); // sorting
+//		addresses = sortAddresses(addresses); // sorting
 		bytes32[] memory leaves = new bytes32[](length);
 		for (uint256 i; i < length; i++) {
 			leaves[i] = keccak256(abi.encodePacked(i, addresses[i])); // get hash from original data
@@ -123,7 +124,7 @@ contract CaptureTheFlag is Ownable {
 		uint256 length = filledAddresses.length;
 		proof = new bytes32[](sqrt(length));
 		bytes32[] memory nodes = getNodes(filledAddresses);
-		filledAddresses = sortAddresses(filledAddresses);
+//		filledAddresses = sortAddresses(filledAddresses);
 		for (uint256 i; i < length; i++) {
 			if (filledAddresses[i] == candidate) {
 				index = i;
