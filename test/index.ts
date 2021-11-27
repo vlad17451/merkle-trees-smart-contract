@@ -20,8 +20,13 @@ let user2: SignerWithAddress
 let user3: SignerWithAddress
 let signers: SignerWithAddress[]
 
+type Pixel = {
+	x: number,
+	y: number,
+	color: number
+}
 
-let whiteList: string[] = []
+let history: Pixel[] = []
 
 async function reDeploy() {
 	signers = await ethers.getSigners() as SignerWithAddress[]
@@ -30,31 +35,72 @@ async function reDeploy() {
 	ctf = await CaptureTheFlag.deploy() as CaptureTheFlag
 }
 
+const pixel1 = {
+	x: 1,
+	y: 2,
+	color: 123
+}
+
+const pixel2 = {
+	x: 3,
+	y: 3,
+	color: 444
+}
+
+// TODO getProof from js
+// addPixels by array
+// give to smart array of hashes instead of array of structs
+
 describe('Contract: Broker', () => {
 	describe('main', () => {
 		it('Should capture the flag', async () => {
 			await reDeploy()
-			const tx = await ctf.addMember(owner.address, [])
+			const tx = await ctf.addPixel(pixel1, [])
 			let receipt = await tx.wait() as any;
-			expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
-			whiteList.push(owner.address)
-			expect(await ctf.whiteListRootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "address"], [0, owner.address]))
-			const proofResponse = await ctf.getProof(owner.address, [ owner.address ])
-			const proof = proofResponse.proof
-			const index = proofResponse.index
-			await ctf.capture(index, proof);
+			// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
+			history.push(pixel1)
+			expect(await ctf.rootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
+			const index = 0
+			const proof = await ctf.getProof(index, history)
+			await ctf.capture(pixel1, index, proof);
 			expect(owner.address).to.be.equal(await ctf.currentFlagHolder())
 		})
 		it('Should add new member and capture the flag', async () => {
+
 			const newCandidate = user0
-			const tx = await ctf.addMember(newCandidate.address, whiteList)
+			const tx = await ctf.addPixel(pixel2, history)
 			let receipt = await tx.wait() as any;
-			expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
-			whiteList.push(newCandidate.address)
-			const proofResponse = await ctf.getProof(newCandidate.address, whiteList)
-			const proof = proofResponse.proof
-			const index = proofResponse.index
-			await ctf.connect(newCandidate).capture(index, proof);
+			// expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
+			history.push(pixel2)
+			const index = 1;
+			const proof = await ctf.getProof(index, [
+				pixel1,
+				pixel2
+			])
+			await ctf.capture({
+				x: 3,
+				y: 3,
+				color: 444
+			}, index, proof);
 		})
+		it('Stress test', async () => {
+			const add = async () => {
+				const pixel: Pixel = {
+					x: 1,
+					y: 2,
+					color: 123
+				}
+				await ctf.addPixel(pixel, history)
+				history.push(pixel)
+
+				const index = history.length - 1;
+				const proof = await ctf.getProof(index, history)
+				await ctf.capture(pixel, index, proof);
+			}
+			for (let i = 0; i < 1000; i += 1) {
+				console.log(i)
+				await add()
+			}
+		}).timeout(100000000)
 	})
 })

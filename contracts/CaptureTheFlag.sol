@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -6,107 +6,86 @@ import "hardhat/console.sol";
 
 contract CaptureTheFlag is Ownable {
 
-	bytes32 public whiteListRootHash;
+	bytes32 public rootHash;
+
+	struct Pixel {
+		uint256 x;
+		uint256 y;
+		uint256 color;
+	}
 
 	address public currentFlagHolder;
 
-	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
-	
-	function addMember(address newMember, address[] memory oldAddresses) public payable onlyOwner {
+//	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
+
+	function addPixel(Pixel memory newMember, Pixel[] memory oldAddresses) public payable onlyOwner {
 		bytes32 oldHash = getRootHash(oldAddresses);
-		require(oldHash == whiteListRootHash, 'CaptureTheFlag: Roots do not match');
-		address[] memory newAddresses = new address[](oldAddresses.length + 1);
+		require(oldHash == rootHash, 'CaptureTheFlag: Roots do not match');
+		Pixel[] memory newAddresses = new Pixel[](oldAddresses.length + 1);
 		for (uint256 i; i < oldAddresses.length; i++) {
 			newAddresses[i] = oldAddresses[i];
 		}
 		newAddresses[newAddresses.length - 1] = newMember;
 		bytes32 newHash = getRootHash(newAddresses);
-		whiteListRootHash = newHash;
-		emit AddNewMember(newMember, oldHash, newHash);
+		rootHash = newHash;
+//		emit AddNewMember(newMember, oldHash, newHash);
 	}
-	
-	function fillAddresses(address[] memory addresses) internal pure returns(address[] memory) {
+
+	function fillAddresses(Pixel[] memory addresses) internal pure returns(Pixel[] memory) {
 		uint256 length = addresses.length;
 		uint256 newLength = length;
 		while (newLength & (newLength - 1) != 0) {
 			newLength++;
 		}
-		address[] memory newAddresses = new address[](newLength);
+		Pixel[] memory newAddresses = new Pixel[](newLength);
 		for (uint256 i; i < length; i++) {
 			newAddresses[i] = addresses[i];
 		}
 		return newAddresses;
 	}
-	
-//  sort is not important
-//	function sortAddresses(address[] memory addresses) public pure returns (address[] memory) {
-//		quickSort(addresses, int(0), int(addresses.length - 1));
-//		return addresses;
-//	}
-	
-	function quickSort(address[] memory addresses, int left, int right) public pure {
-		int i = left;
-		int j = right;
-		if(i==j) return;
-		address pivot = addresses[uint(left + (right - left) / 2)];
-		while (i <= j) {
-			while (addresses[uint(i)] < pivot) i++;
-			while (pivot < addresses[uint(j)]) j--;
-			if (i <= j) {
-				(addresses[uint(i)],addresses[uint(j)]) = (addresses[uint(j)], addresses[uint(i)]);
-				i++;
-				j--;
-			}
-		}
-		if (left < j)
-			quickSort(addresses, left, j);
-		if (i < right)
-			quickSort(addresses, i, right);
-	}
-	
-	function getLeaves(address[] memory addresses) internal pure returns(bytes32[] memory) {
+
+	function getLeaves(Pixel[] memory addresses) internal pure returns(bytes32[] memory) {
 		uint256 length = addresses.length;
-//		addresses = sortAddresses(addresses); // sorting
 		bytes32[] memory leaves = new bytes32[](length);
 		for (uint256 i; i < length; i++) {
-			leaves[i] = keccak256(abi.encodePacked(i, addresses[i])); // get hash from original data
+			leaves[i] = keccak256(abi.encodePacked(i, addresses[i].x, addresses[i].y, addresses[i].color));
 		}
 		return leaves;
 	}
-	
-	function getNodes(address[] memory addresses) internal pure returns(bytes32[] memory) {
+
+	function getNodes(Pixel[] memory addresses) internal pure returns(bytes32[] memory) {
 		bytes32[] memory leaves = getLeaves(addresses);
 		uint256 length = leaves.length;
-		uint256 nodeCount = (length * 2) - 1; // length of all nodes
+		uint256 nodeCount = (length * 2) - 1;
 		bytes32[] memory nodes = new bytes32[](nodeCount);
 		for (uint256 i = 0; i < leaves.length; i++) {
-			nodes[i] = leaves[i]; // put first layer of hashes to nodes
+			nodes[i] = leaves[i];
 		}
-		uint256 path = length; // path equal to current layer length
-		uint256 offset = 0; // needs to skip passed layer
+		uint256 path = length;
+		uint256 offset = 0;
 		uint256 iteration = length;
 		while (path > 0) {
 			for (uint256 i = 0; i < path - 1; i += 2) {
 				nodes[iteration] = keccak256(
 					abi.encodePacked(nodes[offset + i], nodes[offset + i + 1])
-					// get hashes on next layers, until root, last item of nodes is rootHash
+
 				);
 				iteration++;
 			}
 			offset += path;
-			path /= 2; // get next layer length
+			path /= 2;
 		}
 		return nodes;
 	}
-	
-	function getRootHash(address[] memory addresses) internal pure returns(bytes32) {
+
+	function getRootHash(Pixel[] memory addresses) internal pure returns(bytes32) {
 		if (addresses.length == 0) {
 			return bytes32(0);
 		}
 		bytes32[] memory nodes = getNodes(fillAddresses(addresses));
 		return nodes[nodes.length - 1];
 	}
-	
+
 	function log2(uint256 x) public pure returns (uint256 y) {
 		assembly {
 			let arg := x
@@ -137,12 +116,12 @@ contract CaptureTheFlag is Ownable {
 			y := add(y, mul(256, gt(arg, 0x8000000000000000000000000000000000000000000000000000000000000000)))
 		}
 	}
-	
+
 	function getProof(
-		address candidate,
-		address[] memory addresses
-	) public pure returns(bytes32[] memory proof, uint256 index) {
-		address[] memory filledAddresses = fillAddresses(addresses);
+		uint256 index,
+		Pixel[] memory addresses
+	) public pure returns(bytes32[] memory proof) {
+		Pixel[] memory filledAddresses = fillAddresses(addresses);
 		uint256 length = filledAddresses.length;
 		uint256 proofLength = log2(length);
 		if (proofLength == 0) {
@@ -150,20 +129,14 @@ contract CaptureTheFlag is Ownable {
 		}
 		proof = new bytes32[](proofLength);
 		bytes32[] memory nodes = getNodes(filledAddresses);
-//		filledAddresses = sortAddresses(filledAddresses);
-		for (uint256 i; i < length; i++) {
-			if (filledAddresses[i] == candidate) {
-				index = i;
-				break;
-			}
-		}
-		uint256 pathItem = index; // pathItem needs to know is item odd
-		uint256 pathLayer = length; // current layer length
-		uint256 offset = 0; // needs to skip passed layer
+
+		uint256 pathItem = index;
+		uint256 pathLayer = length;
+		uint256 offset = 0;
 		uint256 iteration = 0;
 		while (pathLayer > 1) {
 			bytes32 node;
-			if ((pathItem & 0x01) == 1) { // if odd
+			if ((pathItem & 0x01) == 1) {
 				node = nodes[offset + pathItem - 1];
 			} else {
 				node = nodes[offset + pathItem + 1];
@@ -175,19 +148,17 @@ contract CaptureTheFlag is Ownable {
 			pathItem /= 2;
 		}
 	}
-	
+
 	function verify(
-		address candidate,
+		Pixel memory candidate,
 		uint256 index,
 		bytes32[] calldata proof
 	) public view returns(bool) {
-		// get leave of current pretender value
-		bytes32 node = keccak256(abi.encodePacked(index, candidate));
-		uint256 path = index; // path needs to know is item odd
+		bytes32 node = keccak256(abi.encodePacked(index, candidate.x, candidate.y, candidate.color));
+		uint256 path = index;
 		if (proof[0] != 0) {
 			for (uint16 i = 0; i < proof.length; i++) {
-				// get next nodes from previous nodes until arrived root
-				if ((path & 0x01) == 1) { // if odd
+				if ((path & 0x01) == 1) {
 					node = keccak256(abi.encodePacked(proof[i], node));
 				} else {
 					node = keccak256(abi.encodePacked(node, proof[i]));
@@ -195,11 +166,11 @@ contract CaptureTheFlag is Ownable {
 				path /= 2;
 			}
 		}
-		return node == whiteListRootHash;
+		return node == rootHash;
 	}
 
-	function capture(uint256 index, bytes32[] calldata proof) public payable {
-		require(verify(msg.sender, index, proof), 'CaptureTheFlag: Invalid proof');
+	function capture(Pixel memory candidate, uint256 index, bytes32[] calldata proof) public payable {
+		require(verify(candidate, index, proof), 'CaptureTheFlag: Invalid proof');
 		currentFlagHolder = msg.sender;
 	}
 }
