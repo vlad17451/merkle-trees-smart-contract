@@ -98,6 +98,9 @@ const getNodes = (pixels: Pixel[]): string[] => {
 }
 
 const getProof = (index: number, pixels: Pixel[]): string[] => {
+  if (pixels.length === 1) {
+    return [ '0x0000000000000000000000000000000000000000000000000000000000000000' ]
+  }
   const filledPixels = fillPixels(pixels)
   const length = filledPixels.length
   const proof: string[] = []
@@ -167,7 +170,7 @@ describe('Contract: Broker', () => {
 				const proof = getProof(index, history)
 				await ctf.capture(pixel, index, proof);
 			}
-			for (let i = 0; i < 30000; i += 1) {
+			for (let i = 0; i < 10; i += 1) {
 				console.log(i)
 				await add()
 			}
