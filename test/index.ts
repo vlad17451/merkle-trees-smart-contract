@@ -26,6 +26,12 @@ type Pixel = {
 	color: number
 }
 
+const emptyPixel: Pixel = {
+  x: 0,
+  y: 0,
+  color: 0
+}
+
 let history: Pixel[] = []
 
 async function reDeploy() {
@@ -51,6 +57,71 @@ const pixel2 = {
 // addPixels by array
 // give to smart array of hashes instead of array of structs
 
+const fillPixels = (pixels: Pixel[]): Pixel[] => {
+  let newLength = pixels.length;
+  let newPixels = [ ...pixels ]
+  while ((newLength & (newLength - 1)) !== 0) {
+    newPixels.push(emptyPixel)
+    newLength += 1
+  }
+  return newPixels
+}
+
+const getLeaves = (pixels: Pixel[]): string[] => pixels.map((pixel, i) => ethers
+  .utils
+  .solidityKeccak256(
+    ["uint256", "uint256", "uint256", "uint256"],
+    [i, pixel.x, pixel.y, pixel.color]
+  ))
+
+const getNodes = (pixels: Pixel[]): string[] => {
+  const leaves = getLeaves(pixels)
+  const length = leaves.length
+  let nodes: string[] = [ ...leaves ]
+  let path = length;
+  let offset = 0;
+  let iteration = length;
+  while (path > 0) {
+    for (let i = 0; i < path - 1; i += 2) {
+      nodes[iteration] = ethers
+        .utils
+        .solidityKeccak256(
+          ["bytes32", "bytes32"],
+          [nodes[offset + i], nodes[offset + i + 1]]
+        )
+      iteration++;
+    }
+    offset += path;
+    path /= 2;
+  }
+  return nodes;
+}
+
+const getProof = (index: number, pixels: Pixel[]): string[] => {
+  const filledPixels = fillPixels(pixels)
+  const length = filledPixels.length
+  const proof: string[] = []
+  const nodes = getNodes(filledPixels)
+  let pathItem = index
+  let pathLayer = length
+  let offset = 0
+  let iteration = 0
+  while (pathLayer > 1) {
+    let node = ''
+    if ((pathItem % 2) === 1) {
+      node = nodes[offset + pathItem - 1]
+    } else {
+      node = nodes[offset + pathItem + 1]
+    }
+    proof[iteration] = node;
+    iteration++;
+    offset += pathLayer
+    pathLayer = Math.floor(pathLayer / 2)
+    pathItem = Math.floor(pathItem / 2)
+  }
+  return proof
+}
+
 describe('Contract: Broker', () => {
 	describe('main', () => {
 		it('Should capture the flag', async () => {
@@ -61,19 +132,18 @@ describe('Contract: Broker', () => {
 			history.push(pixel1)
 			expect(await ctf.rootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
 			const index = 0
-			const proof = await ctf.getProof(index, history)
+			const proof = getProof(index, history)
 			await ctf.capture(pixel1, index, proof);
 			expect(owner.address).to.be.equal(await ctf.currentFlagHolder())
 		})
 		it('Should add new member and capture the flag', async () => {
 
-			const newCandidate = user0
 			const tx = await ctf.addPixel(pixel2, history)
 			let receipt = await tx.wait() as any;
 			// expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
 			history.push(pixel2)
 			const index = 1;
-			const proof = await ctf.getProof(index, [
+			const proof = await getProof(index, [
 				pixel1,
 				pixel2
 			])
@@ -94,13 +164,13 @@ describe('Contract: Broker', () => {
 				history.push(pixel)
 
 				const index = history.length - 1;
-				const proof = await ctf.getProof(index, history)
+				const proof = getProof(index, history)
 				await ctf.capture(pixel, index, proof);
 			}
-			for (let i = 0; i < 1000; i += 1) {
+			for (let i = 0; i < 30000; i += 1) {
 				console.log(i)
 				await add()
 			}
-		}).timeout(100000000)
+		}).timeout(10000000000)
 	})
 })
