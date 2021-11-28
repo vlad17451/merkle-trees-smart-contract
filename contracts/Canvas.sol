@@ -1,16 +1,13 @@
-
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-contract CaptureTheFlag is Ownable {
+contract Canvas is Ownable {
 
-//  bytes32 public rootHash;
+  mapping(uint256 => bytes32) rootHashByAge;
 
-  mapping(uint256 => bytes32) rootHashByChunk;
-
-  uint256 pixelsPerChunk = 64;
+  uint256 public pixelsPerAge = 32;
   uint256 pixelsCounter;
 
 	struct Pixel {
@@ -19,23 +16,31 @@ contract CaptureTheFlag is Ownable {
 		uint256 color;
 	}
 
-	address public currentFlagHolder;
+	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 age, bytes32 hash);
 
-//	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
+	function addPixel(Pixel[] memory newPixels, Pixel[] memory oldPixels) public payable onlyOwner {
+    uint256 mergedLength = oldPixels.length + newPixels.length;
+    require(mergedLength <= pixelsPerAge, 'Canvas: Out of age size');
+    uint256 age = pixelsCounter / pixelsPerAge;
+    pixelsCounter += newPixels.length;
 
-	function addPixel(Pixel memory newMember, Pixel[] memory oldPixels) public payable onlyOwner {
-    uint256 chunk = pixelsCounter / pixelsPerChunk;
-    pixelsCounter += 1;
-    bytes32 oldHash = getRootHash(oldPixels);
-    require(oldHash == rootHashByChunk[chunk], 'CaptureTheFlag: addPixel - Roots do not match');
-		Pixel[] memory newPixels = new Pixel[](oldPixels.length + 1);
-		for (uint256 i; i < oldPixels.length; i++) {
-			newPixels[i] = oldPixels[i];
-		}
-		newPixels[newPixels.length - 1] = newMember;
-		bytes32 newHash = getRootHash(newPixels);
-    rootHashByChunk[chunk] = newHash;
-//		emit AddNewMember(newMember, oldHash, newHash);
+    require(getRootHash(oldPixels) == rootHashByAge[age], 'Canvas: Roots do not match in AddPixel');
+		Pixel[] memory mergedPixels = new Pixel[](mergedLength);
+
+    for (uint256 i; i < oldPixels.length; i++) {
+      mergedPixels[i] = oldPixels[i];
+    }
+
+    for (uint256 i; i < newPixels.length; i++) {
+      mergedPixels[oldPixels.length + i] = newPixels[i];
+    }
+
+		bytes32 newHash = getRootHash(mergedPixels);
+    rootHashByAge[age] = newHash;
+
+    for (uint256 i; i < newPixels.length; i++) {
+      emit PixelAdded(0, newPixels[i].x, newPixels[i].y, newPixels[i].color, age, newHash);
+    }
 	}
 
 	function fillPixels(Pixel[] memory pixels) public pure returns(Pixel[] memory) {
@@ -109,16 +114,11 @@ contract CaptureTheFlag is Ownable {
 				path /= 2;
 			}
 		}
-    uint256 chunk = (pixelsCounter - 1) / pixelsPerChunk;
-    return node == rootHashByChunk[chunk];
+    uint256 age = (pixelsCounter - 1) / pixelsPerAge;
+    return node == rootHashByAge[age];
 	}
 
-	function capture(Pixel memory candidate, uint256 index, bytes32[] calldata proof) public payable {
-		require(verify(candidate, index, proof), 'CaptureTheFlag: Invalid proof');
-		currentFlagHolder = msg.sender;
-	}
-
-  function getRootHashByChunk(uint256 chunk) public view returns(bytes32) {
-    return rootHashByChunk[chunk];
+  function getRootHashByAge(uint256 age) public view returns(bytes32) {
+    return rootHashByAge[age];
   }
 }

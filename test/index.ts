@@ -9,15 +9,13 @@ import Web3 from 'web3'
 // @ts-ignore
 const web3 = new Web3(network.provider) as Web3
 
-import { CaptureTheFlag } from '../typechain'
+import { Canvas } from '../typechain'
 
-let ctf: CaptureTheFlag
+let ctf: Canvas
 
 let owner: SignerWithAddress
 let user0: SignerWithAddress
 let user1: SignerWithAddress
-let user2: SignerWithAddress
-let user3: SignerWithAddress
 let signers: SignerWithAddress[]
 
 type Pixel = {
@@ -36,9 +34,9 @@ let history: Pixel[] = []
 
 async function reDeploy() {
 	signers = await ethers.getSigners() as SignerWithAddress[]
-	[owner, user0, user1, user2, user3] = signers
-	let CaptureTheFlag = await ethers.getContractFactory('CaptureTheFlag')
-	ctf = await CaptureTheFlag.deploy() as CaptureTheFlag
+	[owner, user0, user1] = signers
+	let Canvas = await ethers.getContractFactory('Canvas')
+	ctf = await Canvas.deploy() as Canvas
   history = []
 }
 
@@ -53,10 +51,6 @@ const pixel2 = {
 	y: 3,
 	color: 444
 }
-
-// TODO getProof from js
-// addPixels by array
-// give to smart array of hashes instead of array of structs
 
 const fillPixels = (pixels: Pixel[]): Pixel[] => {
   let newLength = pixels.length;
@@ -128,21 +122,21 @@ const getProof = (index: number, pixels: Pixel[]): string[] => {
 
 describe('Contract: Broker', () => {
 	describe('main', () => {
-		it('Should capture the flag', async () => {
+		it('Should verify the flag', async () => {
 			await reDeploy()
-			const tx = await ctf.addPixel(pixel1, [])
+			const tx = await ctf.addPixel([ pixel1 ], [])
 			let receipt = await tx.wait() as any;
 			// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 			history.push(pixel1)
 			expect(await ctf.getRootHashByAge(0)).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
 			const index = 0
 			const proof = getProof(index, history)
-			await ctf.capture(pixel1, index, proof);
-			expect(owner.address).to.be.equal(await ctf.currentFlagHolder())
+			const isOk = await ctf.verify(pixel1, index, proof);
+			expect(isOk).to.be.equal(true)
 		})
-		it('Should add new member and capture the flag', async () => {
+		it('Should add new member and verify the flag', async () => {
 
-			const tx = await ctf.addPixel(pixel2, history)
+			const tx = await ctf.addPixel([ pixel2 ], history)
 			let receipt = await tx.wait() as any;
 			// expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
 			history.push(pixel2)
@@ -151,13 +145,16 @@ describe('Contract: Broker', () => {
 				pixel1,
 				pixel2
 			])
-			await ctf.capture({
+			await ctf.verify({
 				x: 3,
 				y: 3,
 				color: 444
 			}, index, proof);
 		})
 		it('Stress test', async () => {
+
+		  let chunk: Pixel[] = []
+
 			const add = async () => {
 				const pixel: Pixel = {
 					x: 1,
@@ -165,20 +162,23 @@ describe('Contract: Broker', () => {
 					color: 123
 				}
 
-        let index = history.length;
-        if (index % 64 === 0) {
-          history = []
+        let index = chunk.length;
+				const pixelsPerAge = Number(await ctf.pixelsPerAge())
+        if (index % pixelsPerAge === 0) {
+          chunk = []
           index = 0
         }
-        await ctf.addPixel(pixel, history)
-				history.push(pixel)
-				const proof = getProof(index, history)
-				await ctf.capture(pixel, index, proof);
+        await ctf.addPixel([ pixel, pixel ], chunk)
+        chunk.push(pixel)
+        chunk.push(pixel)
+
+				const proof = getProof(index, chunk)
+        const isOk = await ctf.verify(pixel, index, proof);
+        expect(isOk).to.be.equal(true)
 			}
 			await reDeploy()
-			for (let i = 0; i < 1000; i += 1) {
-				console.log(i)
-        console.log('history.length', history.length)
+			for (let i = 0; i < 10000; i += 1) {
+				console.log(i, chunk.length)
 				await add()
 			}
 		}).timeout(10000000000)
