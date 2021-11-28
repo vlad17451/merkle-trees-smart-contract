@@ -39,6 +39,7 @@ async function reDeploy() {
 	[owner, user0, user1, user2, user3] = signers
 	let CaptureTheFlag = await ethers.getContractFactory('CaptureTheFlag')
 	ctf = await CaptureTheFlag.deploy() as CaptureTheFlag
+  history = []
 }
 
 const pixel1 = {
@@ -133,7 +134,7 @@ describe('Contract: Broker', () => {
 			let receipt = await tx.wait() as any;
 			// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 			history.push(pixel1)
-			expect(await ctf.rootHash()).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
+			expect(await ctf.getRootHashByAge(0)).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
 			const index = 0
 			const proof = getProof(index, history)
 			await ctf.capture(pixel1, index, proof);
@@ -163,15 +164,21 @@ describe('Contract: Broker', () => {
 					y: 2,
 					color: 123
 				}
-				await ctf.addPixel(pixel, history)
-				history.push(pixel)
 
-				const index = history.length - 1;
+        let index = history.length;
+        if (index % 64 === 0) {
+          history = []
+          index = 0
+        }
+        await ctf.addPixel(pixel, history)
+				history.push(pixel)
 				const proof = getProof(index, history)
 				await ctf.capture(pixel, index, proof);
 			}
-			for (let i = 0; i < 10; i += 1) {
+			await reDeploy()
+			for (let i = 0; i < 1000; i += 1) {
 				console.log(i)
+        console.log('history.length', history.length)
 				await add()
 			}
 		}).timeout(10000000000)

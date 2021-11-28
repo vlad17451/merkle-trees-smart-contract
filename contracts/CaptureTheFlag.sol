@@ -6,7 +6,12 @@ import "hardhat/console.sol";
 
 contract CaptureTheFlag is Ownable {
 
-	bytes32 public rootHash;
+//  bytes32 public rootHash;
+
+  mapping(uint256 => bytes32) rootHashByChunk;
+
+  uint256 pixelsPerChunk = 64;
+  uint256 pixelsCounter;
 
 	struct Pixel {
 		uint256 x;
@@ -19,15 +24,17 @@ contract CaptureTheFlag is Ownable {
 //	event AddNewMember(address newMember, bytes32 oldRoot, bytes32 newRoot);
 
 	function addPixel(Pixel memory newMember, Pixel[] memory oldPixels) public payable onlyOwner {
-		bytes32 oldHash = getRootHash(oldPixels);
-		require(oldHash == rootHash, 'CaptureTheFlag: Roots do not match');
+    uint256 chunk = pixelsCounter / pixelsPerChunk;
+    pixelsCounter += 1;
+    bytes32 oldHash = getRootHash(oldPixels);
+    require(oldHash == rootHashByChunk[chunk], 'CaptureTheFlag: addPixel - Roots do not match');
 		Pixel[] memory newPixels = new Pixel[](oldPixels.length + 1);
 		for (uint256 i; i < oldPixels.length; i++) {
 			newPixels[i] = oldPixels[i];
 		}
 		newPixels[newPixels.length - 1] = newMember;
 		bytes32 newHash = getRootHash(newPixels);
-		rootHash = newHash;
+    rootHashByChunk[chunk] = newHash;
 //		emit AddNewMember(newMember, oldHash, newHash);
 	}
 
@@ -102,11 +109,16 @@ contract CaptureTheFlag is Ownable {
 				path /= 2;
 			}
 		}
-		return node == rootHash;
+    uint256 chunk = (pixelsCounter - 1) / pixelsPerChunk;
+    return node == rootHashByChunk[chunk];
 	}
 
 	function capture(Pixel memory candidate, uint256 index, bytes32[] calldata proof) public payable {
 		require(verify(candidate, index, proof), 'CaptureTheFlag: Invalid proof');
 		currentFlagHolder = msg.sender;
 	}
+
+  function getRootHashByChunk(uint256 chunk) public view returns(bytes32) {
+    return rootHashByChunk[chunk];
+  }
 }
