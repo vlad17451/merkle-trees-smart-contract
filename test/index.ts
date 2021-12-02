@@ -121,66 +121,88 @@ const getProof = (index: number, pixels: Pixel[]): string[] => {
 }
 
 describe('Contract: Broker', () => {
-	describe('main', () => {
-		it('Should verify the flag', async () => {
-			await reDeploy()
-			const tx = await ctf.addPixel([ pixel1 ], [])
-			let receipt = await tx.wait() as any;
-			// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
-			history.push(pixel1)
-			expect(await ctf.getRootHashByAge(0)).to.be.equal(ethers.utils.solidityKeccak256(["uint256", "uint256", "uint256", "uint256"], [0, pixel1.x, pixel1.y, pixel1.color]))
-			const index = 0
-			const proof = getProof(index, history)
-			const isOk = await ctf.verify(pixel1, index, proof);
-			expect(isOk).to.be.equal(true)
-		})
-		it('Should add new member and verify the flag', async () => {
+	// describe('main', () => {
+	it('Should verify the flag', async () => {
+		await reDeploy()
+		const tx = await ctf.addPixel([ pixel1 ])
+		let receipt = await tx.wait() as any;
+		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 
-			const tx = await ctf.addPixel([ pixel2 ], history)
-			let receipt = await tx.wait() as any;
-			// expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
-			history.push(pixel2)
-			const index = 1;
-			const proof = await getProof(index, [
-				pixel1,
-				pixel2
-			])
-			await ctf.verify({
-				x: 3,
-				y: 3,
-				color: 444
-			}, index, proof);
-		})
-		it('Stress test', async () => {
-
-		  let chunk: Pixel[] = []
-
-			const add = async () => {
-				const pixel: Pixel = {
-					x: 1,
-					y: 2,
-					color: 123
-				}
-
-        let index = chunk.length;
-				const pixelsPerAge = Number(await ctf.pixelsPerAge())
-        if (index % pixelsPerAge === 0) {
-          chunk = []
-          index = 0
-        }
-        await ctf.addPixel([ pixel, pixel ], chunk)
-        chunk.push(pixel)
-        chunk.push(pixel)
-
-				const proof = getProof(index, chunk)
-        const isOk = await ctf.verify(pixel, index, proof);
-        expect(isOk).to.be.equal(true)
-			}
-			await reDeploy()
-			for (let i = 0; i < 10000; i += 1) {
-				console.log(i, chunk.length)
-				await add()
-			}
-		}).timeout(10000000000)
+		expect(await ctf.getRootHashByChunk(0)).to.be.equal(
+			ethers.utils.solidityKeccak256(
+				["uint256", "uint256", "uint256", "uint256"],
+				[0, pixel1.x, pixel1.y, pixel1.color]
+			)
+		)
+		const index = 0
+		const proof = getProof(index, [ pixel1 ])
+		const isOk = await ctf.verify(pixel1, index, proof, 0);
+		expect(isOk).to.be.equal(true)
 	})
+	it('Should verify the flag', async () => {
+		await reDeploy()
+		const tx = await ctf.addPixel([ pixel1 ])
+		let receipt = await tx.wait() as any;
+		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
+
+		expect(await ctf.getRootHashByChunk(1)).to.be.equal(
+			ethers.utils.solidityKeccak256(
+				["uint256", "uint256", "uint256", "uint256"],
+				[0, pixel1.x, pixel1.y, pixel1.color]
+			)
+		)
+		const index = 0
+		const proof = getProof(index, [ pixel1 ])
+		const isOk = await ctf.verify(pixel1, index, proof, 1);
+		expect(isOk).to.be.equal(true)
+	})
+	// 	it('Should add new member and verify the flag', async () => {
+	//
+	// 		const tx = await ctf.addPixel([ pixel2 ], history)
+	// 		let receipt = await tx.wait() as any;
+	// 		// expect(newCandidate.address).to.be.equal(receipt.events[0].args.newMember)
+	// 		history.push(pixel2)
+	// 		const index = 1;
+	// 		const proof = await getProof(index, [
+	// 			pixel1,
+	// 			pixel2
+	// 		])
+	// 		await ctf.verify({
+	// 			x: 3,
+	// 			y: 3,
+	// 			color: 444
+	// 		}, index, proof);
+	// 	})
+	// 	it('Stress test', async () => {
+	//
+	// 	  let chunk: Pixel[] = []
+	//
+	// 		const add = async () => {
+	// 			const pixel: Pixel = {
+	// 				x: 1,
+	// 				y: 2,
+	// 				color: 123
+	// 			}
+	//
+  //       let index = chunk.length;
+	// 			const pixelsPerAge = Number(await ctf.pixelsPerChunk())
+  //       if (index % pixelsPerAge === 0) {
+  //         chunk = []
+  //         index = 0
+  //       }
+  //       await ctf.addPixel([ pixel, pixel ], chunk)
+  //       chunk.push(pixel)
+  //       chunk.push(pixel)
+	//
+	// 			const proof = getProof(index, chunk)
+  //       const isOk = await ctf.verify(pixel, index, proof);
+  //       expect(isOk).to.be.equal(true)
+	// 		}
+	// 		await reDeploy()
+	// 		for (let i = 0; i < 4; i += 1) {
+	// 			console.log(i, chunk.length)
+	// 			await add()
+	// 		}
+	// 	}).timeout(10000000000)
+	// })
 })

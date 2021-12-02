@@ -5,10 +5,11 @@ import "hardhat/console.sol";
 
 contract Canvas is Ownable {
 
-  mapping(uint256 => bytes32) rootHashByAge;
-
-  uint256 public pixelsPerAge = 32;
-  uint256 pixelsCounter;
+  mapping(uint256 => bytes32) rootHashByChunk;
+	
+	
+	uint256 public lastChunk = 0;
+	
 
 	struct Pixel {
 		uint256 x;
@@ -16,30 +17,19 @@ contract Canvas is Ownable {
 		uint256 color;
 	}
 
-	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 age, bytes32 hash);
+	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 chunk, bytes32 hash);
 
-	function addPixel(Pixel[] memory newPixels, Pixel[] memory oldPixels) public payable onlyOwner {
-    uint256 mergedLength = oldPixels.length + newPixels.length;
-    require(mergedLength <= pixelsPerAge, 'Canvas: Out of age size');
-    uint256 age = pixelsCounter / pixelsPerAge;
-    pixelsCounter += newPixels.length;
+	function addPixel(Pixel[] memory newPixels) public onlyOwner {
 
-    require(getRootHash(oldPixels) == rootHashByAge[age], 'Canvas: Roots do not match in AddPixel');
-		Pixel[] memory mergedPixels = new Pixel[](mergedLength);
-
-    for (uint256 i; i < oldPixels.length; i++) {
-      mergedPixels[i] = oldPixels[i];
-    }
+		bytes32 pixelsHash = getRootHash(newPixels);
+		console.log(uint256(pixelsHash));
+    rootHashByChunk[lastChunk] = pixelsHash;
+		console.log(lastChunk, uint256(rootHashByChunk[lastChunk]));
+	
+		lastChunk = 1;
 
     for (uint256 i; i < newPixels.length; i++) {
-      mergedPixels[oldPixels.length + i] = newPixels[i];
-    }
-
-		bytes32 newHash = getRootHash(mergedPixels);
-    rootHashByAge[age] = newHash;
-
-    for (uint256 i; i < newPixels.length; i++) {
-      emit PixelAdded(0, newPixels[i].x, newPixels[i].y, newPixels[i].color, age, newHash);
+      emit PixelAdded(0, newPixels[i].x, newPixels[i].y, newPixels[i].color, lastChunk, pixelsHash);
     }
 	}
 
@@ -100,7 +90,8 @@ contract Canvas is Ownable {
 	function verify(
 		Pixel memory candidate,
 		uint256 index,
-		bytes32[] calldata proof
+		bytes32[] calldata proof,
+		uint256 chunk
 	) public view returns(bool) {
 		bytes32 node = keccak256(abi.encodePacked(index, candidate.x, candidate.y, candidate.color));
 		uint256 path = index;
@@ -114,11 +105,11 @@ contract Canvas is Ownable {
 				path /= 2;
 			}
 		}
-    uint256 age = (pixelsCounter - 1) / pixelsPerAge;
-    return node == rootHashByAge[age];
+    return node == rootHashByChunk[chunk];
 	}
 
-  function getRootHashByAge(uint256 age) public view returns(bytes32) {
-    return rootHashByAge[age];
+  function getRootHashByChunk(uint256 chunk) public view returns(bytes32) {
+	  console.log(123, uint256(rootHashByChunk[chunk]));
+    return rootHashByChunk[chunk];
   }
 }
