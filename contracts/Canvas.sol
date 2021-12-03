@@ -16,15 +16,27 @@ contract Canvas is Ownable {
 
 	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 chunk);
 
-	function addPixel(uint256 tokenId, Pixel[] memory newPixels) public {
-
-		bytes32 pixelsHash = getRootHash(newPixels);
-    rootHashByChunk[tokenId][chunkCounter[tokenId]] = pixelsHash;
+	function addPixel(uint256 tokenId, Pixel[] memory pixels) public {
 		
-    for (uint256 i; i < newPixels.length; i++) {
-      emit PixelAdded(tokenId, newPixels[i].x, newPixels[i].y, newPixels[i].color, chunkCounter[tokenId]);
+		bytes32 prevRootHash;
+		if (chunkCounter[tokenId] != 0) {
+			prevRootHash = rootHashByChunk[tokenId][chunkCounter[tokenId] - 1];
+		}
+		
+		bytes32 pixelsHash = getRootHash(pixels);
+		bytes32 chunkHash = getChunkHash(prevRootHash, pixelsHash);
+	
+		rootHashByChunk[tokenId][chunkCounter[tokenId]] = chunkHash;
+		
+    for (uint256 i; i < pixels.length; i++) {
+      emit PixelAdded(tokenId, pixels[i].x, pixels[i].y, pixels[i].color, chunkCounter[tokenId]);
     }
+		
 		chunkCounter[tokenId]++;
+	}
+	
+	function getChunkHash(bytes32 prevChunkRootHash, bytes32 pixelsHash) public pure returns(bytes32) {
+		return keccak256(abi.encodePacked(prevChunkRootHash, pixelsHash));
 	}
 
 	function fillPixels(Pixel[] memory pixels) public pure returns(Pixel[] memory) {
@@ -100,7 +112,17 @@ contract Canvas is Ownable {
 				path /= 2;
 			}
 		}
-    return node == rootHashByChunk[tokenId][chunk];
+		
+		
+		
+		bytes32 prevRootHash;
+		if (chunk != 0) {
+			prevRootHash = rootHashByChunk[tokenId][chunk - 1];
+		}
+		
+		bytes32 chunkHash = getChunkHash(prevRootHash, node);
+	
+		return chunkHash == rootHashByChunk[tokenId][chunk];
 	}
 
   function getRootHash(uint256 tokenId, uint256 chunk) public view returns(bytes32) {

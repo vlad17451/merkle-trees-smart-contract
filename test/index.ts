@@ -52,6 +52,8 @@ const pixel2 = {
 	color: 444
 }
 
+const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 const fillPixels = (pixels: Pixel[]): Pixel[] => {
   let newLength = pixels.length;
   let newPixels = [ ...pixels ]
@@ -94,7 +96,7 @@ const getNodes = (pixels: Pixel[]): string[] => {
 
 const getProof = (index: number, pixels: Pixel[]): string[] => {
   if (pixels.length === 1) {
-    return [ '0x0000000000000000000000000000000000000000000000000000000000000000' ]
+    return [ ZERO_HASH ]
   }
   const filledPixels = fillPixels(pixels)
   const length = filledPixels.length
@@ -120,42 +122,64 @@ const getProof = (index: number, pixels: Pixel[]): string[] => {
   return proof
 }
 
+const getRootHash = (pixels: Pixel[]): string => {
+	if (pixels.length == 0) {
+		return ZERO_HASH;
+	}
+	const nodes = getNodes(fillPixels(pixels));
+	return nodes[nodes.length - 1];
+}
+
+const getChunkHash = (prevHash: string, pixels: Pixel[]) => {
+	const pixelsHash = getRootHash(pixels);
+	return ethers
+		.utils
+		.solidityKeccak256(
+			["bytes32", "bytes32"],
+			[prevHash, pixelsHash]
+		)
+}
+
 const TOKEN_ID = 0
 
-describe('Contract: Broker', () => {
-	// describe('main', () => {
-	it('Should verify the flag', async () => {
-		await reDeploy()
-		const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
-		let receipt = await tx.wait() as any;
-		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
+describe('Canvas', () => {
+	describe('main', () => {
+		const chunkPixels = [ pixel1, pixel1, pixel1 ]
 
-		expect(await ctf.getRootHash(TOKEN_ID, 0)).to.be.equal(
-			ethers.utils.solidityKeccak256(
-				["uint256", "uint256", "uint256", "uint256"],
-				[0, pixel1.x, pixel1.y, pixel1.color]
-			)
-		)
-		const pixelIndex = 0
-		const proof = getProof(pixelIndex, [ pixel1 ])
-		const isOk = await ctf.verify(0, pixel1, pixelIndex, proof, 0);
-		expect(isOk).to.be.equal(true)
+		it('AddPixels, hashes should be equal',  async () => {
+			await reDeploy()
+			await ctf.addPixel(TOKEN_ID, chunkPixels);
+
+			const myRootHash = getChunkHash(ZERO_HASH,chunkPixels);
+			const contractRootHash = await ctf.getRootHash(TOKEN_ID, 0);
+
+			expect(myRootHash).to.be.equal(contractRootHash)
+		})
+		it('Success verify pixels', async () => {
+			const pixelIndex = 0
+			const proof = getProof(pixelIndex, chunkPixels)
+			const candidate = pixel1; // check if pixel1 exists in chunk
+			const isOk = await ctf.verify(TOKEN_ID, candidate, pixelIndex, proof, 0);
+
+			expect(isOk).to.be.equal(true)
+		})
 	})
-	it('Should verify the flag', async () => {
-		const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
-		let receipt = await tx.wait() as any;
-		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
-		expect(await ctf.getRootHash(TOKEN_ID, 1)).to.be.equal(
-			ethers.utils.solidityKeccak256(
-				["uint256", "uint256", "uint256", "uint256"],
-				[0, pixel1.x, pixel1.y, pixel1.color]
-			)
-		)
-		const pixelIndex = 0
-		const proof = getProof(pixelIndex, [ pixel1 ])
-		const isOk = await ctf.verify(TOKEN_ID, pixel1, pixelIndex, proof, 1);
-		expect(isOk).to.be.equal(true)
-	})
+
+	// it('Should verify the flag', async () => {
+	// 	const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
+	// 	let receipt = await tx.wait() as any;
+	// 	// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
+	// 	expect(await ctf.getRootHash(TOKEN_ID, 1)).to.be.equal(
+	// 		ethers.utils.solidityKeccak256(
+	// 			["uint256", "uint256", "uint256", "uint256"],
+	// 			[0, pixel1.x, pixel1.y, pixel1.color]
+	// 		)
+	// 	)
+	// 	const pixelIndex = 0
+	// 	const proof = getProof(pixelIndex, [ pixel1 ])
+	// 	const isOk = await ctf.verify(TOKEN_ID, pixel1, pixelIndex, proof, 1);
+	// 	expect(isOk).to.be.equal(true)
+	// })
 	// 	it('Should add new member and verify the flag', async () => {
 	//
 	// 		const tx = await ctf.addPixel([ pixel2 ], history)
