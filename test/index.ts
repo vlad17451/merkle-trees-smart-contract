@@ -130,7 +130,7 @@ describe('Contract: Broker', () => {
 		let receipt = await tx.wait() as any;
 		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 
-		expect(await ctf.getRootHashByChunk(TOKEN_ID, 0)).to.be.equal(
+		expect(await ctf.getRootHash(TOKEN_ID, 0)).to.be.equal(
 			ethers.utils.solidityKeccak256(
 				["uint256", "uint256", "uint256", "uint256"],
 				[0, pixel1.x, pixel1.y, pixel1.color]
@@ -145,7 +145,7 @@ describe('Contract: Broker', () => {
 		const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
 		let receipt = await tx.wait() as any;
 		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
-		expect(await ctf.getRootHashByChunk(TOKEN_ID, 1)).to.be.equal(
+		expect(await ctf.getRootHash(TOKEN_ID, 1)).to.be.equal(
 			ethers.utils.solidityKeccak256(
 				["uint256", "uint256", "uint256", "uint256"],
 				[0, pixel1.x, pixel1.y, pixel1.color]

@@ -103,7 +103,7 @@ contract Canvas is Ownable {
     return node == rootHashByChunk[tokenId][chunk];
 	}
 
-  function getRootHashByChunk(uint256 tokenId, uint256 chunk) public view returns(bytes32) {
+  function getRootHash(uint256 tokenId, uint256 chunk) public view returns(bytes32) {
     return rootHashByChunk[tokenId][chunk];
   }
 }
