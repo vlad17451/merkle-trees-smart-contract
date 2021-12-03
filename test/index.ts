@@ -120,40 +120,40 @@ const getProof = (index: number, pixels: Pixel[]): string[] => {
   return proof
 }
 
+const TOKEN_ID = 0
+
 describe('Contract: Broker', () => {
 	// describe('main', () => {
 	it('Should verify the flag', async () => {
 		await reDeploy()
-		const tx = await ctf.addPixel([ pixel1 ])
+		const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
 		let receipt = await tx.wait() as any;
 		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
 
-		expect(await ctf.getRootHashByChunk(0)).to.be.equal(
+		expect(await ctf.getRootHashByChunk(TOKEN_ID, 0)).to.be.equal(
 			ethers.utils.solidityKeccak256(
 				["uint256", "uint256", "uint256", "uint256"],
 				[0, pixel1.x, pixel1.y, pixel1.color]
 			)
 		)
-		const index = 0
-		const proof = getProof(index, [ pixel1 ])
-		const isOk = await ctf.verify(pixel1, index, proof, 0);
+		const pixelIndex = 0
+		const proof = getProof(pixelIndex, [ pixel1 ])
+		const isOk = await ctf.verify(0, pixel1, pixelIndex, proof, 0);
 		expect(isOk).to.be.equal(true)
 	})
 	it('Should verify the flag', async () => {
-		await reDeploy()
-		const tx = await ctf.addPixel([ pixel1 ])
+		const tx = await ctf.addPixel(TOKEN_ID, [ pixel1 ])
 		let receipt = await tx.wait() as any;
 		// expect(owner.address).to.be.equal(receipt.events[0].args.newMember)
-
-		expect(await ctf.getRootHashByChunk(1)).to.be.equal(
+		expect(await ctf.getRootHashByChunk(TOKEN_ID, 1)).to.be.equal(
 			ethers.utils.solidityKeccak256(
 				["uint256", "uint256", "uint256", "uint256"],
 				[0, pixel1.x, pixel1.y, pixel1.color]
 			)
 		)
-		const index = 0
-		const proof = getProof(index, [ pixel1 ])
-		const isOk = await ctf.verify(pixel1, index, proof, 1);
+		const pixelIndex = 0
+		const proof = getProof(pixelIndex, [ pixel1 ])
+		const isOk = await ctf.verify(TOKEN_ID, pixel1, pixelIndex, proof, 1);
 		expect(isOk).to.be.equal(true)
 	})
 	// 	it('Should add new member and verify the flag', async () => {

@@ -4,12 +4,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract Canvas is Ownable {
-
-  mapping(uint256 => bytes32) rootHashByChunk;
 	
-	
-	uint256 public lastChunk = 0;
-	
+	mapping(uint256 => mapping(uint256 => bytes32)) rootHashByChunk;
+	mapping(uint256 => uint256) chunkCounter;
 
 	struct Pixel {
 		uint256 x;
@@ -17,20 +14,17 @@ contract Canvas is Ownable {
 		uint256 color;
 	}
 
-	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 chunk, bytes32 hash);
+	event PixelAdded(uint256 tokenId, uint256 x, uint256 y, uint256 color, uint256 chunk);
 
-	function addPixel(Pixel[] memory newPixels) public onlyOwner {
+	function addPixel(uint256 tokenId, Pixel[] memory newPixels) public {
 
 		bytes32 pixelsHash = getRootHash(newPixels);
-		console.log(uint256(pixelsHash));
-    rootHashByChunk[lastChunk] = pixelsHash;
-		console.log(lastChunk, uint256(rootHashByChunk[lastChunk]));
-	
-		lastChunk = 1;
-
+    rootHashByChunk[tokenId][chunkCounter[tokenId]] = pixelsHash;
+		
     for (uint256 i; i < newPixels.length; i++) {
-      emit PixelAdded(0, newPixels[i].x, newPixels[i].y, newPixels[i].color, lastChunk, pixelsHash);
+      emit PixelAdded(tokenId, newPixels[i].x, newPixels[i].y, newPixels[i].color, chunkCounter[tokenId]);
     }
+		chunkCounter[tokenId]++;
 	}
 
 	function fillPixels(Pixel[] memory pixels) public pure returns(Pixel[] memory) {
@@ -88,6 +82,7 @@ contract Canvas is Ownable {
 	}
 
 	function verify(
+		uint256 tokenId,
 		Pixel memory candidate,
 		uint256 index,
 		bytes32[] calldata proof,
@@ -105,11 +100,10 @@ contract Canvas is Ownable {
 				path /= 2;
 			}
 		}
-    return node == rootHashByChunk[chunk];
+    return node == rootHashByChunk[tokenId][chunk];
 	}
 
-  function getRootHashByChunk(uint256 chunk) public view returns(bytes32) {
-	  console.log(123, uint256(rootHashByChunk[chunk]));
-    return rootHashByChunk[chunk];
+  function getRootHashByChunk(uint256 tokenId, uint256 chunk) public view returns(bytes32) {
+    return rootHashByChunk[tokenId][chunk];
   }
 }
