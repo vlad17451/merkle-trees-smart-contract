@@ -130,7 +130,7 @@ const getPixelsRootHash = (pixels: Pixel[]): string => {
 	return nodes[nodes.length - 1];
 }
 
-const getChunkHash = (prevHash: string, pixels: Pixel[]) => {
+const getChunkHash = (prevHash: string, pixels: Pixel[]): string => {
 	const pixelsHash = getPixelsRootHash(pixels);
 	return ethers
 		.utils
@@ -140,17 +140,44 @@ const getChunkHash = (prevHash: string, pixels: Pixel[]) => {
 		)
 }
 
+const getFinalChunkHash = (pixels2d: Pixel[][]): string =>
+	pixels2d.reduce((hash, pixels) =>
+		getChunkHash(hash, pixels), ZERO_HASH)
+
 const TOKEN_ID = 0
+
+const generateRandomChunk = (): Pixel[] => {
+	const getRand = () => Math.round(-0.5 + Math.random() * (10 + 1))
+	const size = getRand()
+	const chunk: Pixel[] = [];
+	for (let i = 0; i < size; i++) {
+		const pixel: Pixel = {
+			x: getRand(),
+			y: getRand(),
+			color: getRand(),
+		}
+		chunk.push(pixel)
+	}
+	return chunk;
+}
+
+// color and background - just number of color, calculated through hex to dec // TODO example
+// chunk - array of pixels which were drawn at same tx through {addPixel}
+// chunkIndex - just index of chunk, starts from zero and etc
+// pixel - struct with info of x and y coordinate where it drawn and it color
 
 describe('Canvas', () => {
 	describe('main', () => {
-		const chunkPixels = [ pixel1, pixel1, pixel1 ]
+		const chunkPixels = generateRandomChunk()
+		console.log(chunkPixels)
 
 		it('AddPixels, hashes should be equal',  async () => {
 			await reDeploy()
 			await ctf.addPixel(TOKEN_ID, chunkPixels);
 
-			const myRootHash = getChunkHash(ZERO_HASH,chunkPixels);
+			const myRootHash = getFinalChunkHash([
+				chunkPixels
+			]);
 			const contractRootHash = await ctf.getPixelsRootHash(TOKEN_ID, 0);
 
 			expect(myRootHash).to.be.equal(contractRootHash)
@@ -158,17 +185,35 @@ describe('Canvas', () => {
 		it('Success verifyPixel pixels', async () => {
 			const pixelIndex = 0
 			const proof = getProof(pixelIndex, chunkPixels)
-			const candidate = pixel1; // check if pixel1 exists in chunk
+			const candidate = chunkPixels[0]; // check if pixel1 exists in chunk
 			const isOk = await ctf.verifyPixel(TOKEN_ID, candidate, pixelIndex, proof, 0);
 
 			expect(isOk).to.be.equal(true)
 		})
 		it('AddPixels 2, hashes should be equal',  async () => {
-			// await reDeploy()
+
 			await ctf.addPixel(TOKEN_ID, chunkPixels);
 
-			const myRootHash = getChunkHash(getChunkHash(ZERO_HASH, chunkPixels),chunkPixels);
+			const myRootHash = getFinalChunkHash([
+				chunkPixels,
+				chunkPixels
+			]);
+
 			const contractRootHash = await ctf.getPixelsRootHash(TOKEN_ID, 1);
+
+			expect(myRootHash).to.be.equal(contractRootHash)
+		})
+		it('AddPixels 3, hashes should be equal',  async () => {
+
+			await ctf.addPixel(TOKEN_ID, chunkPixels);
+
+			const myRootHash = getFinalChunkHash([
+				chunkPixels,
+				chunkPixels,
+				chunkPixels,
+			]);
+
+			const contractRootHash = await ctf.getPixelsRootHash(TOKEN_ID, 2);
 
 			expect(myRootHash).to.be.equal(contractRootHash)
 		})
