@@ -5,8 +5,16 @@ import "hardhat/console.sol";
 
 contract Canvas is Ownable {
 	
-	mapping(uint256 => mapping(uint256 => bytes32)) rootHashByChunk;
-	mapping(uint256 => uint256) chunkCounter;
+	mapping(uint256 => mapping(uint256 => bytes32)) pixelsRootHashByChunk;
+	mapping(uint256 => uint256) chunkCounterByTokenId;
+	
+//	struct Canvas {
+//		uint256 size;
+//		uint256 background;
+//		uint256 chunkCounter;
+//		bytes32 whitelistRootHash;
+//		mapping(uint256 => bytes32) pixelsRootHashByChunk;
+//	}
 
 	struct Pixel {
 		uint256 x;
@@ -18,21 +26,24 @@ contract Canvas is Ownable {
 
 	function addPixel(uint256 tokenId, Pixel[] memory pixels) public {
 		
+		mapping(uint256 => bytes32) storage rootHash = pixelsRootHashByChunk[tokenId];
+		uint256 chunkCounter = chunkCounterByTokenId[tokenId];
+		
 		bytes32 prevRootHash;
-		if (chunkCounter[tokenId] != 0) {
-			prevRootHash = rootHashByChunk[tokenId][chunkCounter[tokenId] - 1];
+		if (chunkCounter != 0) {
+			prevRootHash = rootHash[chunkCounter - 1];
 		}
 		
-		bytes32 pixelsHash = getRootHash(pixels);
+		bytes32 pixelsHash = generatePixelsRootHash(pixels);
 		bytes32 chunkHash = getChunkHash(prevRootHash, pixelsHash);
 	
-		rootHashByChunk[tokenId][chunkCounter[tokenId]] = chunkHash;
+		rootHash[chunkCounter] = chunkHash;
 		
     for (uint256 i; i < pixels.length; i++) {
-      emit PixelAdded(tokenId, pixels[i].x, pixels[i].y, pixels[i].color, chunkCounter[tokenId]);
+      emit PixelAdded(tokenId, pixels[i].x, pixels[i].y, pixels[i].color, chunkCounter);
     }
 		
-		chunkCounter[tokenId]++;
+		chunkCounterByTokenId[tokenId]++;
 	}
 	
 	function getChunkHash(bytes32 prevChunkRootHash, bytes32 pixelsHash) public pure returns(bytes32) {
@@ -52,7 +63,7 @@ contract Canvas is Ownable {
 		return newPixels;
 	}
 
-	function getLeaves(Pixel[] memory pixels) internal pure returns(bytes32[] memory) {
+	function getPixelsLeaves(Pixel[] memory pixels) internal pure returns(bytes32[] memory) {
 		uint256 length = pixels.length;
 		bytes32[] memory leaves = new bytes32[](length);
 		for (uint256 i; i < length; i++) {
@@ -61,8 +72,7 @@ contract Canvas is Ownable {
 		return leaves;
 	}
 
-	function getNodes(Pixel[] memory pixels) internal pure returns(bytes32[] memory) {
-		bytes32[] memory leaves = getLeaves(pixels);
+	function getNodes(bytes32[] memory leaves) internal pure returns(bytes32[] memory) {
 		uint256 length = leaves.length;
 		uint256 nodeCount = (length * 2) - 1;
 		bytes32[] memory nodes = new bytes32[](nodeCount);
@@ -85,22 +95,22 @@ contract Canvas is Ownable {
 		return nodes;
 	}
 
-	function getRootHash(Pixel[] memory pixels) internal pure returns(bytes32) {
+	function generatePixelsRootHash(Pixel[] memory pixels) internal pure returns(bytes32) {
 		if (pixels.length == 0) {
 			return bytes32(0);
 		}
-		bytes32[] memory nodes = getNodes(fillPixels(pixels));
+		bytes32[] memory nodes = getNodes(getPixelsLeaves(fillPixels(pixels)));
 		return nodes[nodes.length - 1];
 	}
 
-	function verify(
+	function verifyPixel(
 		uint256 tokenId,
-		Pixel memory candidate,
+		Pixel memory pixel,
 		uint256 index,
 		bytes32[] calldata proof,
 		uint256 chunk
 	) public view returns(bool) {
-		bytes32 node = keccak256(abi.encodePacked(index, candidate.x, candidate.y, candidate.color));
+		bytes32 node = keccak256(abi.encodePacked(index, pixel.x, pixel.y, pixel.color));
 		uint256 path = index;
 		if (proof[0] != 0) {
 			for (uint16 i = 0; i < proof.length; i++) {
@@ -112,20 +122,15 @@ contract Canvas is Ownable {
 				path /= 2;
 			}
 		}
-		
-		
-		
 		bytes32 prevRootHash;
 		if (chunk != 0) {
-			prevRootHash = rootHashByChunk[tokenId][chunk - 1];
+			prevRootHash = pixelsRootHashByChunk[tokenId][chunk - 1];
 		}
-		
 		bytes32 chunkHash = getChunkHash(prevRootHash, node);
-	
-		return chunkHash == rootHashByChunk[tokenId][chunk];
+		return chunkHash == pixelsRootHashByChunk[tokenId][chunk];
 	}
 
-  function getRootHash(uint256 tokenId, uint256 chunk) public view returns(bytes32) {
-    return rootHashByChunk[tokenId][chunk];
+  function getPixelsRootHash(uint256 tokenId, uint256 chunk) public view returns(bytes32) {
+    return pixelsRootHashByChunk[tokenId][chunk];
   }
 }
